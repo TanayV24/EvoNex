@@ -1,6 +1,3 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
 import Navbar from "@/components/landing/Navbar";
 import HeroSection from "@/components/landing/HeroSection";
 import TrustedBySection from "@/components/landing/TrustedBySection";
@@ -15,19 +12,7 @@ import PricingSection from "@/components/landing/PricingSection";
 import CTASection from "@/components/landing/CTASection";
 import Footer from "@/components/landing/Footer";
 
-
 const Index = () => {
-  const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/dashboard');
-    } else {
-      navigate('/login');
-    }
-  }, [isAuthenticated, navigate]);
-
   return (
     <main className="min-h-screen bg-background overflow-hidden">
       <Navbar />

@@ -12,144 +12,156 @@ import Tasks from "./pages/Tasks";
 import Leave from "./pages/Leave";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import Index from "./pages/Index"; // Import your landing page
 
 const queryClient = new QueryClient();
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-  
+
   return <>{children}</>;
 };
 
 const AppRoutes = () => {
   const { isAuthenticated } = useAuth();
 
+  // If user is logged in, redirect root to dashboard
+  // If user is not logged in, show landing page
+  if (isAuthenticated) {
+    return (
+      <Routes>
+        {/* Protected Dashboard Routes */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/employees"
+          element={
+            <ProtectedRoute>
+              <Employees />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/attendance"
+          element={
+            <ProtectedRoute>
+              <Attendance />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/tasks"
+          element={
+            <ProtectedRoute>
+              <Tasks />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/leave"
+          element={
+            <ProtectedRoute>
+              <Leave />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <Settings />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Redirect all other routes to dashboard when authenticated */}
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    );
+  }
+
+  // User is NOT logged in - show landing and login pages
   return (
     <Routes>
-      <Route 
-        path="/login" 
-        element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />} 
-      />
-      <Route 
-        path="/" 
-        element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} 
-      />
-      <Route 
-        path="/dashboard" 
+      {/* Landing Page - Public Route (First page users see) */}
+      <Route path="/" element={<Index />} />
+
+      {/* Login Route - Public */}
+      <Route path="/login" element={<Login />} />
+
+      {/* Protected Routes - Only accessible when authenticated */}
+      <Route
+        path="/dashboard"
         element={
           <ProtectedRoute>
             <Dashboard />
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/employees" 
+
+      <Route
+        path="/employees"
         element={
           <ProtectedRoute>
             <Employees />
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/attendance" 
+
+      <Route
+        path="/attendance"
         element={
           <ProtectedRoute>
             <Attendance />
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/tasks" 
+
+      <Route
+        path="/tasks"
         element={
           <ProtectedRoute>
             <Tasks />
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/leave" 
+
+      <Route
+        path="/leave"
         element={
           <ProtectedRoute>
             <Leave />
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/settings" 
+
+      <Route
+        path="/settings"
         element={
           <ProtectedRoute>
             <Settings />
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/companies" 
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/payroll" 
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/advances" 
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/compliance" 
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/analytics" 
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/integrations" 
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/notifications" 
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/security" 
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        } 
-      />
+
+      {/* 404 Route */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
@@ -157,15 +169,15 @@ const AppRoutes = () => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <AuthProvider>
           <AppRoutes />
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </TooltipProvider>
   </QueryClientProvider>
 );
 
