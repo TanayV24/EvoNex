@@ -21,7 +21,7 @@ This repo is a Vite TypeScript + React project scaffold (Lovable deliverable) wh
 
 ---
 
-## 🔎 Root file & folder listing (exact — taken from the repository)
+## 🔎 Root file & folder listing 
 
 ```
 
@@ -46,12 +46,6 @@ This repo is a Vite TypeScript + React project scaffold (Lovable deliverable) wh
 ````
 
 (These top-level files/folders are the ones visible in the repository view.) :contentReference[oaicite:3]{index=3}
-
----
-
-## 🧭 One-line description
-
-> A modern Vite + React + TypeScript starter scaffold with shadcn-ui & Tailwind — generated via Lovable for rapid UI development. :contentReference[oaicite:4]{index=4}
 
 ---
 
