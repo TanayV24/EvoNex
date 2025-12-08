@@ -244,7 +244,7 @@ const Leave: React.FC = () => {
                   <PopoverTrigger asChild>
                     <Button variant="outline" className="justify-start text-left font-normal">
                       <CalendarDays className="mr-2 h-4 w-4" />
-                      {dateRange.from ? (
+                      {dateRange?.from ? (
                         dateRange.to ? (
                           <>
                             {format(dateRange.from, 'LLL dd, y')} - {format(dateRange.to, 'LLL dd, y')}
@@ -354,7 +354,7 @@ const Leave: React.FC = () => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-success hover:bg-success/10"
+                            className="h-8 w-8 text-emerald-500 hover:bg-emerald-500/10"
                             onClick={() => handleApproval(request.id, 'approved')}
                           >
                             <Check className="h-4 w-4" />

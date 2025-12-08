@@ -28,14 +28,14 @@ const attendanceData = [
   { date: '2024-01-02', punchIn: '08:50 AM', punchOut: '06:45 PM', status: 'present', hours: 9.9 },
 ];
 
-const statusColors = {
+const statusColors: Record<string, 'success' | 'warning' | 'destructive' | 'info' | 'ghost'> = {
   present: 'success',
   late: 'warning',
   absent: 'destructive',
   'half-day': 'info',
   weekend: 'ghost',
   holiday: 'ghost',
-} as const;
+};
 
 const statusIcons = {
   present: CheckCircle,

@@ -12,18 +12,18 @@ const tasks = [
   { id: 4, name: 'Training Program', progress: 95, status: 'on-track', priority: 'low' },
 ];
 
-const statusColors = {
+const statusColors: Record<string, 'success' | 'info' | 'destructive'> = {
   'on-track': 'success',
   'in-progress': 'info',
   'delayed': 'destructive',
-} as const;
+};
 
-const priorityColors = {
+const priorityColors: Record<string, 'ghost' | 'secondary' | 'warning' | 'destructive'> = {
   low: 'ghost',
   medium: 'secondary',
   high: 'warning',
   urgent: 'destructive',
-} as const;
+};
 
 export const TaskProgress: React.FC = () => {
   return (
