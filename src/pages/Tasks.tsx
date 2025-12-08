@@ -96,12 +96,12 @@ const columns = [
   { id: 'done', title: 'Done', color: 'bg-success/20' },
 ];
 
-const priorityColors = {
+const priorityColors: Record<string, 'ghost' | 'secondary' | 'warning' | 'destructive'> = {
   low: 'ghost',
   medium: 'secondary',
   high: 'warning',
   urgent: 'destructive',
-} as const;
+};
 
 const TaskCard: React.FC<{ task: Task; isDragging?: boolean }> = ({ task, isDragging }) => {
   const {

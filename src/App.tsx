@@ -6,13 +6,14 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import AdminDashboard from "./pages/AdminDashboard";
 import Employees from "./pages/Employees";
 import Attendance from "./pages/Attendance";
 import Tasks from "./pages/Tasks";
 import Leave from "./pages/Leave";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
-import Index from "./pages/Index"; // Import your landing page
+import Index from "./pages/Index";
 
 const queryClient = new QueryClient();
 
@@ -26,20 +27,29 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return <>{children}</>;
 };
 
+const DashboardRouter: React.FC = () => {
+  const { user } = useAuth();
+  
+  // Admin and Developer roles get the Admin Dashboard
+  if (user?.role === 'admin' || user?.role === 'developer') {
+    return <AdminDashboard />;
+  }
+  
+  // Manager and Employee roles get the regular Dashboard
+  return <Dashboard />;
+};
+
 const AppRoutes = () => {
   const { isAuthenticated } = useAuth();
 
-  // If user is logged in, redirect root to dashboard
-  // If user is not logged in, show landing page
   if (isAuthenticated) {
     return (
       <Routes>
-        {/* Protected Dashboard Routes */}
         <Route
           path="/dashboard"
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <DashboardRouter />
             </ProtectedRoute>
           }
         />
@@ -89,7 +99,6 @@ const AppRoutes = () => {
           }
         />
 
-        {/* Redirect all other routes to dashboard when authenticated */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/login" element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<NotFound />} />
@@ -97,21 +106,15 @@ const AppRoutes = () => {
     );
   }
 
-  // User is NOT logged in - show landing and login pages
   return (
     <Routes>
-      {/* Landing Page - Public Route (First page users see) */}
       <Route path="/" element={<Index />} />
-
-      {/* Login Route - Public */}
       <Route path="/login" element={<Login />} />
-
-      {/* Protected Routes - Only accessible when authenticated */}
       <Route
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <Dashboard />
+            <DashboardRouter />
           </ProtectedRoute>
         }
       />
@@ -161,7 +164,6 @@ const AppRoutes = () => {
         }
       />
 
-      {/* 404 Route */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

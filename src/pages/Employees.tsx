@@ -108,11 +108,11 @@ const mockEmployees = [
   },
 ];
 
-const statusColors = {
+const statusColors: Record<string, 'success' | 'destructive' | 'warning'> = {
   active: 'success',
   inactive: 'destructive',
   'on-leave': 'warning',
-} as const;
+};
 
 const Employees: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
