@@ -1,12 +1,14 @@
-// src/contexts/AuthContext.tsx
+// src/contexts/AuthContext.tsx - UPDATED VERSION
 
 import React, {
   createContext,
   useContext,
   useState,
   useCallback,
+  useEffect,
   ReactNode,
 } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export type UserRole = 'developer' | 'admin' | 'manager' | 'employee';
 
@@ -15,15 +17,16 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
-  avatar: string;
-  department: string;
-  designation: string;
-  status: 'active' | 'inactive';
+  avatar?: string;
+  department?: string;
+  designation?: string;
+  status?: 'active' | 'inactive';
   company_id?: string;
   company_name?: string;
   full_name?: string;
   personal_email?: string;
   temp_password?: boolean;
+  company_setup_completed?: boolean;
   verified?: boolean;
 }
 
@@ -36,7 +39,7 @@ interface AuthContextType {
   logout: () => void;
   switchRole: (role: UserRole) => void;
   updateUserData: (userData: Partial<User>) => void;
-  isLoading: boolean;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -53,24 +56,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [refreshToken, setRefreshToken] = useState<string | null>(
     localStorage.getItem('refresh_token')
   );
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start as loading
 
   // On mount, check if user is already logged in
-  React.useEffect(() => {
+  useEffect(() => {
     const storedUser = localStorage.getItem('user');
-    if (storedUser && accessToken) {
+    const storedAccessToken = localStorage.getItem('access_token');
+    
+    console.log('🔍 AuthContext: Checking stored credentials...');
+    console.log('Stored user:', storedUser);
+    console.log('Stored token:', storedAccessToken ? 'EXISTS' : 'NONE');
+    
+    if (storedUser && storedAccessToken) {
       try {
-        setUser(JSON.parse(storedUser));
+        const userData = JSON.parse(storedUser);
+        console.log('✅ User loaded from localStorage:', userData);
+        console.log('🔑 Temp password:', userData.temp_password);
+        setUser(userData);
+        setAccessToken(storedAccessToken);
       } catch (error) {
-        console.error('Failed to parse stored user:', error);
+        console.error('❌ Failed to parse stored user:', error);
         localStorage.removeItem('user');
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
       }
+    } else {
+      console.log('ℹ️ No stored credentials found');
     }
-  }, [accessToken]);
+    
+    setLoading(false);
+  }, []);
 
   const login = useCallback(
     async (email: string, password: string, role: UserRole) => {
-      setIsLoading(true);
+      setLoading(true);
       try {
         // Backend call is handled in Login.tsx
         // This function is called after successful login
@@ -79,7 +98,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const storedRefreshToken = localStorage.getItem('refresh_token');
 
         if (storedUser && storedAccessToken) {
-          setUser(JSON.parse(storedUser));
+          const userData = JSON.parse(storedUser);
+          setUser(userData);
           setAccessToken(storedAccessToken);
           setRefreshToken(storedRefreshToken);
         }
@@ -87,13 +107,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.error('Login error:', error);
         throw error;
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     },
     []
   );
 
   const logout = useCallback(() => {
+    console.log('🚪 Logging out...');
     setUser(null);
     setAccessToken(null);
     setRefreshToken(null);
@@ -113,6 +134,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const updatedUser = { ...user, ...userData };
       setUser(updatedUser);
       localStorage.setItem('user', JSON.stringify(updatedUser));
+      console.log('✅ User data updated:', updatedUser);
     }
   }, [user]);
 
@@ -125,12 +147,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     switchRole,
     updateUserData,
-    isLoading,
+    loading,
   };
 
-  return (
-    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {

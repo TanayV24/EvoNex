@@ -10,7 +10,7 @@ class CompanyEmailService:
     """Service to handle all email communications for companies"""
 
     @staticmethod
-    def send_admin_credentials(personal_email, company_name, admin_email, temp_password, token):
+    def send_admin_credentials(personal_email, company_name, admin_email, temp_password, token=None):
         """
         Send admin login credentials to personal email
         

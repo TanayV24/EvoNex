@@ -31,139 +31,132 @@ export const Header: React.FC<HeaderProps> = ({ title, subtitle }) => {
 
   const unreadCount = notifications.filter(n => n.unread).length;
 
-  return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/80 backdrop-blur-xl px-6">
-      {/* Title Section */}
-      <div className="flex items-center gap-4">
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <h1 className="text-xl font-semibold">{title}</h1>
-          {subtitle && (
-            <p className="text-sm text-muted-foreground">{subtitle}</p>
-          )}
-        </motion.div>
-      </div>
+  // ✅ SAFETY CHECK - Return loading state if no user
+  if (!user) {
+    return (
+      <header className="bg-card/95 backdrop-blur-lg border-b border-border sticky top-0 z-30">
+        <div className="px-8 py-4">
+          <div className="flex items-center gap-4">
+            <div className="h-8 w-40 bg-primary/20 rounded animate-pulse" />
+            <div className="ml-auto h-10 w-10 rounded-full bg-primary/20 animate-pulse" />
+          </div>
+        </div>
+      </header>
+    );
+  }
 
-      {/* Actions */}
-      <div className="flex items-center gap-3">
-        {/* Search */}
-        <AnimatePresence>
-          {showSearch ? (
-            <motion.div
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 300, opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="overflow-hidden"
-            >
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+  // ✅ SAFE ACCESS - Use optional chaining and fallback
+  const userInitial = user.full_name?.charAt(0)?.toUpperCase() || user.name?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase() || '?';
+  const displayName = user.full_name || user.name || user.email || 'User';
+
+  return (
+    <motion.header
+      initial={{ y: -20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      className="bg-card/95 backdrop-blur-lg border-b border-border sticky top-0 z-30"
+    >
+      <div className="px-8 py-4">
+        <div className="flex items-center justify-between gap-4">
+          {/* Title Section */}
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              {title}
+            </h1>
+            {subtitle && (
+              <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
+            )}
+          </div>
+
+          {/* Search Bar */}
+          <AnimatePresence>
+            {showSearch && (
+              <motion.div
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: 300, opacity: 1 }}
+                exit={{ width: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
                 <Input
-                  placeholder="Search anything..."
-                  className="pl-9 pr-9"
+                  type="search"
+                  placeholder="Search..."
+                  className="w-full"
                   autoFocus
                 />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2"
-                  onClick={() => setShowSearch(false)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2">
+            {/* Search Toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowSearch(!showSearch)}
             >
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowSearch(true)}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <Search className="h-5 w-5" />
-              </Button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Notifications */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
-              <Bell className="h-5 w-5" />
-              {unreadCount > 0 && (
-                <motion.span
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-xs text-destructive-foreground"
-                >
-                  {unreadCount}
-                </motion.span>
-              )}
+              {showSearch ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
-            <DropdownMenuLabel className="flex items-center justify-between">
-              <span>Notifications</span>
-              <Badge variant="secondary">{unreadCount} new</Badge>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {notifications.map((notification) => (
-              <DropdownMenuItem key={notification.id} className="flex flex-col items-start gap-1 p-3">
-                <div className="flex items-center gap-2 w-full">
-                  <span className="font-medium">{notification.title}</span>
-                  {notification.unread && (
-                    <span className="h-2 w-2 rounded-full bg-primary" />
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground">{notification.message}</p>
-                <span className="text-xs text-muted-foreground">{notification.time}</span>
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="justify-center text-primary">
-              View all notifications
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
 
-        {/* User Menu */}
-        {user && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-                <Avatar className="h-9 w-9">
-                  <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">{user.name}</p>
-                  <p className="text-xs text-muted-foreground">{user.email}</p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>Profile</DropdownMenuItem>
-              <DropdownMenuItem>Settings</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive">
-                Log out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+            {/* Notifications */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative">
+                  <Bell className="h-5 w-5" />
+                  {unreadCount > 0 && (
+                    <Badge
+                      variant="destructive"
+                      className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                    >
+                      {unreadCount}
+                    </Badge>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80">
+                <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {notifications.map((notification) => (
+                  <DropdownMenuItem key={notification.id} className="flex-col items-start py-3">
+                    <div className="flex items-start justify-between w-full">
+                      <span className="font-medium">{notification.title}</span>
+                      {notification.unread && (
+                        <div className="h-2 w-2 rounded-full bg-primary" />
+                      )}
+                    </div>
+                    <span className="text-xs text-muted-foreground">{notification.message}</span>
+                    <span className="text-xs text-muted-foreground mt-1">{notification.time}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* User Avatar */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                  <Avatar>
+                    <AvatarImage src={user.avatar} />
+                    <AvatarFallback>{userInitial}</AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium">{displayName}</p>
+                    <p className="text-xs text-muted-foreground">{user.email}</p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>Profile</DropdownMenuItem>
+                <DropdownMenuItem>Settings</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-destructive">Logout</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
       </div>
-    </header>
+    </motion.header>
   );
 };

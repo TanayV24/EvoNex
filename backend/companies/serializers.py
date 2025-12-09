@@ -166,3 +166,35 @@ class DashboardDataSerializer(serializers.Serializer):
             'total_employees': 0,
             'pending_approvals': 0,
         }
+
+
+# ==========================================
+# 6. COMPANY SETUP SERIALIZER (NEW)
+# ==========================================
+
+class CompanySetupSerializer(serializers.Serializer):
+    company_name = serializers.CharField(max_length=255, required=True)
+    company_website = serializers.URLField(required=False, allow_blank=True)
+    company_industry = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    timezone = serializers.CharField(max_length=50, required=False, default='IST')
+    currency = serializers.CharField(max_length=10, required=False, default='INR')
+    total_employees = serializers.IntegerField(required=False, default=0, min_value=0)
+    working_hours_start = serializers.CharField(max_length=10, required=False, default='09:00')  # Changed to CharField
+    working_hours_end = serializers.CharField(max_length=10, required=False, default='18:00')    # Changed to CharField
+    casual_leave_days = serializers.IntegerField(required=False, default=12, min_value=0)
+    sick_leave_days = serializers.IntegerField(required=False, default=6, min_value=0)
+    personal_leave_days = serializers.IntegerField(required=False, default=2, min_value=0)
+    managers = serializers.ListField(
+        child=serializers.DictField(
+            child=serializers.CharField(),
+            required=False
+        ),
+        required=False,
+        allow_empty=True
+    )
+
+    def validate_company_name(self, value):
+        if not value.strip():
+            raise serializers.ValidationError("Company name cannot be empty")
+        return value
+

@@ -1,10 +1,10 @@
-// src/components/layout/Sidebar.tsx
+// src/components/layout/Sidebar.tsx - WORKING VERSION
+
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { NavLink, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/contexts/AuthContext1';
-import { UserRole } from '@/types/workos';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   LayoutDashboard,
   Users,
@@ -32,7 +32,7 @@ interface MenuItem {
   icon: React.ElementType;
   label: string;
   path: string;
-  roles: UserRole[];
+  roles: ('developer' | 'admin' | 'manager' | 'employee')[];
 }
 
 const menuItems: MenuItem[] = [
@@ -49,207 +49,143 @@ const menuItems: MenuItem[] = [
   { icon: Link2, label: 'Integrations', path: '/integrations', roles: ['developer', 'admin'] },
   { icon: Bell, label: 'Notifications', path: '/notifications', roles: ['developer', 'admin', 'manager', 'employee'] },
   { icon: Shield, label: 'Security', path: '/security', roles: ['developer', 'admin'] },
-
-  // Whiteboard stays in main nav (so it's above the bottom pinned settings)
   { icon: FileText, label: 'Whiteboard', path: '/whiteboard', roles: ['developer', 'admin', 'manager', 'employee'] },
 ];
 
-interface SidebarProps {}
-
-export const Sidebar: React.FC<SidebarProps> = () => {
+export const Sidebar: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const location = useLocation();
 
-  const filteredMenuItems = menuItems.filter(
-    item => user && item.roles.includes(user.role)
-  );
+  if (!user) {
+    return null; // Don't render sidebar if no user
+  }
 
-  const sidebarVariants = {
-    expanded: { width: 280 },
-    collapsed: { width: 80 },
-  };
+  const filteredMenuItems = menuItems.filter(item => item.roles.includes(user.role as any));
 
-  const itemVariants = {
-    expanded: { opacity: 1, x: 0 },
-    collapsed: { opacity: 0, x: -10 },
-  };
-
-  // helper to determine active state
   const isPathActive = (path: string) => {
     if (path === '/') return location.pathname === '/';
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
+  const userInitial = user.full_name?.charAt(0)?.toUpperCase() || user.name?.charAt(0)?.toUpperCase() || '?';
+  const displayName = user.full_name || user.name || 'User';
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login', { replace: true });
+  };
+
   return (
     <motion.aside
-      initial={false}
-      animate={isCollapsed ? 'collapsed' : 'expanded'}
-      variants={sidebarVariants}
-      transition={{ duration: 0.3, ease: 'easeInOut' }}
-      className="fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-sidebar-border bg-sidebar"
+      initial={{ x: -20, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      className="fixed left-0 top-0 h-screen bg-card border-r border-border z-40 flex flex-col transition-all duration-300"
+      style={{ width: isCollapsed ? 80 : 280 }}
     >
       {/* Logo */}
-      <div className="flex h-16 items-center justify-between px-4 border-b border-sidebar-border">
-        <motion.div
-          className="flex items-center gap-3"
-          animate={{ justifyContent: isCollapsed ? 'center' : 'flex-start' }}
-        >
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-primary shadow-glow">
-            <span className="text-lg font-bold text-primary-foreground">W</span>
+      <div className="p-6 border-b border-border">
+        <motion.div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold text-lg shadow-lg">
+            W
           </div>
-          <AnimatePresence>
-            {!isCollapsed && (
-              <motion.span
-                initial={{ opacity: 0, width: 0 }}
-                animate={{ opacity: 1, width: 'auto' }}
-                exit={{ opacity: 0, width: 0 }}
-                transition={{ duration: 0.2 }}
-                className="text-xl font-bold text-gradient overflow-hidden whitespace-nowrap"
-              >
-                WorkOS
-              </motion.span>
-            )}
-          </AnimatePresence>
+          {!isCollapsed && (
+            <motion.span
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="font-bold text-xl bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent"
+            >
+              WorkOS
+            </motion.span>
+          )}
         </motion.div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4 px-3 scrollbar-thin">
-        <ul className="space-y-1">
-          {filteredMenuItems.map((item) => {
-            const isActive = isPathActive(item.path);
-            const Icon = item.icon;
+      <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-2">
+        {filteredMenuItems.map((item) => {
+          const isActive = isPathActive(item.path);
+          const Icon = item.icon;
 
-            return (
-              <li key={item.path}>
-                <Tooltip delayDuration={0}>
-                  <TooltipTrigger asChild>
-                    <NavLink
-                      to={item.path}
-                      className={cn(
-                        'sidebar-item group relative',
-                        isActive && 'active'
-                      )}
-                    >
-                      {isActive && (
-                        <motion.div
-                          layoutId="activeIndicator"
-                          className="absolute left-0 top-0 h-full w-1 rounded-r-full bg-primary"
-                          transition={{ duration: 0.2 }}
-                        />
-                      )}
-                      <Icon className={cn(
-                        'h-5 w-5 shrink-0 transition-colors',
-                        isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
-                      )} />
-                      <AnimatePresence>
-                        {!isCollapsed && (
-                          <motion.span
-                            variants={itemVariants}
-                            initial="collapsed"
-                            animate="expanded"
-                            exit="collapsed"
-                            transition={{ duration: 0.2 }}
-                            className="overflow-hidden whitespace-nowrap"
-                          >
-                            {item.label}
-                          </motion.span>
-                        )}
-                      </AnimatePresence>
-                    </NavLink>
-                  </TooltipTrigger>
-                  {isCollapsed && (
-                    <TooltipContent side="right" className="font-medium">
-                      {item.label}
-                    </TooltipContent>
-                  )}
-                </Tooltip>
-              </li>
-            );
-          })}
-        </ul>
+          return (
+            <NavLink key={item.path} to={item.path}>
+              <motion.div
+                className={cn(
+                  'relative flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 cursor-pointer',
+                  isActive
+                    ? 'bg-primary text-primary-foreground shadow-md'
+                    : 'text-foreground hover:bg-accent hover:text-accent-foreground',
+                  isCollapsed && 'justify-center'
+                )}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Icon className="w-5 h-5 relative z-10" />
+                {!isCollapsed && (
+                  <motion.span className="relative z-10 font-medium text-sm">
+                    {item.label}
+                  </motion.span>
+                )}
+                {isCollapsed && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="sr-only">{item.label}</span>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">{item.label}</TooltipContent>
+                  </Tooltip>
+                )}
+              </motion.div>
+            </NavLink>
+          );
+        })}
       </nav>
 
-      {/* User Profile & Actions (bottom pinned area) */}
-      <div className="border-t border-sidebar-border p-3 space-y-3 mt-auto">
-        {/* Pinned Settings link (always visible at bottom) */}
-        {user && (
-          <NavLink
-            to="/settings"
-            className={cn(
-              'sidebar-item group relative flex items-center gap-3 rounded-md px-2 py-2',
-              isPathActive('/settings') ? 'active' : ''
-            )}
-            aria-label="Settings"
+      {/* User Profile & Actions */}
+      <div className="border-t border-border p-3 space-y-2">
+        {/* Settings */}
+        <NavLink to="/settings">
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn('w-full justify-start gap-3', isCollapsed && 'justify-center')}
           >
-            <Settings className={cn('h-5 w-5', isPathActive('/settings') ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground')} />
-            <AnimatePresence>
-              {!isCollapsed && (
-                <motion.span
-                  variants={itemVariants}
-                  initial="collapsed"
-                  animate="expanded"
-                  exit="collapsed"
-                  transition={{ duration: 0.2 }}
-                >
-                  Settings
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </NavLink>
-        )}
+            <Settings className="w-5 h-5" />
+            {!isCollapsed && <span className="text-sm">Settings</span>}
+          </Button>
+        </NavLink>
 
         {/* User Profile */}
-        {user && (
-          <div className={cn(
-            'flex items-center gap-3 rounded-lg p-2 bg-secondary/50',
+        <div
+          className={cn(
+            'flex items-center gap-3 p-2 rounded-lg bg-accent/50',
             isCollapsed && 'justify-center'
-          )}>
-            <Avatar className="h-9 w-9 ring-2 ring-primary/20">
-              <AvatarImage src={user.avatar} alt={user.name} />
-              <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-            </Avatar>
-            <AnimatePresence>
-              {!isCollapsed && (
-                <motion.div
-                  variants={itemVariants}
-                  initial="collapsed"
-                  animate="expanded"
-                  exit="collapsed"
-                  className="flex-1 overflow-hidden"
-                >
-                  <p className="text-sm font-medium truncate">{user.name}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        )}
+          )}
+        >
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={user.avatar} />
+            <AvatarFallback>{userInitial}</AvatarFallback>
+          </Avatar>
+          {!isCollapsed && (
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{displayName}</p>
+              <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
+            </div>
+          )}
+        </div>
 
         {/* Logout */}
         <Button
           variant="ghost"
           size="sm"
-          onClick={logout}
+          onClick={handleLogout}
           className={cn(
             'w-full justify-start gap-3 text-destructive hover:text-destructive hover:bg-destructive/10',
             isCollapsed && 'justify-center'
           )}
         >
-          <LogOut className="h-5 w-5" />
-          <AnimatePresence>
-            {!isCollapsed && (
-              <motion.span
-                variants={itemVariants}
-                initial="collapsed"
-                animate="expanded"
-                exit="collapsed"
-              >
-                Logout
-              </motion.span>
-            )}
-          </AnimatePresence>
+          <LogOut className="w-5 h-5" />
+          {!isCollapsed && <span className="text-sm">Logout</span>}
         </Button>
 
         {/* Collapse Toggle */}
@@ -257,28 +193,10 @@ export const Sidebar: React.FC<SidebarProps> = () => {
           variant="ghost"
           size="sm"
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className={cn(
-            'w-full justify-start gap-3',
-            isCollapsed && 'justify-center'
-          )}
+          className={cn('w-full justify-start gap-3', isCollapsed && 'justify-center')}
         >
-          {isCollapsed ? (
-            <ChevronRight className="h-5 w-5" />
-          ) : (
-            <ChevronLeft className="h-5 w-5" />
-          )}
-          <AnimatePresence>
-            {!isCollapsed && (
-              <motion.span
-                variants={itemVariants}
-                initial="collapsed"
-                animate="expanded"
-                exit="collapsed"
-              >
-                Collapse
-              </motion.span>
-            )}
-          </AnimatePresence>
+          {isCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+          {!isCollapsed && <span className="text-sm">Collapse</span>}
         </Button>
       </div>
     </motion.aside>

@@ -29,8 +29,8 @@ POST http://localhost:8000/api/auth/login/
 Content-Type: application/json
 
 {
-  "email": "admin@test_company.com",
-  "password": "sb7qz93RZmL4U3AK",
+  "email": "admin@torrent.com",
+  "password": "Tanay123",
   "role": "admin"
 }
 

@@ -125,6 +125,32 @@ class CompanyAdmin(models.Model):
     is_verified = models.BooleanField(default=False)
     verified_at = models.DateTimeField(null=True, blank=True)
 
+    # ============ ADD THESE FIELDS ============
+    # Company Setup Tracking
+    company_setup_completed = models.BooleanField(
+        default=False,
+        help_text="Whether company setup wizard has been completed"
+    )
+    setup_completed_at = models.DateTimeField(null=True, blank=True)
+    
+    # Company Information (filled during setup)
+    company_name = models.CharField(max_length=255, null=True, blank=True)
+    company_website = models.URLField(null=True, blank=True)
+    company_industry = models.CharField(max_length=100, null=True, blank=True)
+    timezone = models.CharField(max_length=50, default='IST')
+    currency = models.CharField(max_length=10, default='INR')
+    
+    # Employee & Working Info
+    total_employees = models.IntegerField(default=0)
+    working_hours_start = models.TimeField(default='09:00')
+    working_hours_end = models.TimeField(default='18:00')
+    
+    # Leave Structure
+    casual_leave_days = models.IntegerField(default=12)
+    sick_leave_days = models.IntegerField(default=6)
+    personal_leave_days = models.IntegerField(default=2)
+    # ==========================================
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
