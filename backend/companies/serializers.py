@@ -198,3 +198,20 @@ class CompanySetupSerializer(serializers.Serializer):
             raise serializers.ValidationError("Company name cannot be empty")
         return value
 
+# ==========================================
+# 7. PROFILE & NOTIFICATION SERIALIZERS
+# ==========================================
+
+class ProfileUpdateSerializer(serializers.Serializer):
+    full_name = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    phone = serializers.CharField(required=False, allow_blank=True, max_length=20)
+    department = serializers.CharField(required=False, allow_blank=True, max_length=100)
+
+
+class NotificationSettingsSerializer(serializers.Serializer):
+    email_notifications = serializers.BooleanField(default=True)
+    push_notifications = serializers.BooleanField(default=True)
+    sms_notifications = serializers.BooleanField(default=False)
+    leave_approvals = serializers.BooleanField(default=True)
+    task_assignments = serializers.BooleanField(default=True)
+    payroll_updates = serializers.BooleanField(default=True)

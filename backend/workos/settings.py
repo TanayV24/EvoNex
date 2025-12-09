@@ -13,6 +13,11 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=lamb
 
 ASGI_APPLICATION = "workos.asgi.application"  # adjust to your project's asgi module
 
+# settings.py
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+
 # CORS
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",

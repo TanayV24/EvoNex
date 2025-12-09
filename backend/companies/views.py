@@ -397,11 +397,205 @@ class AuthViewSet(viewsets.ViewSet):
 class AdminDashboardViewSet(viewsets.ViewSet):
     """
     ViewSet for admin dashboard operations
-    
+
     Endpoints:
-    - GET /api/admin/dashboard/
+    - GET /api/admin/profile/
+    - PUT /api/admin/profile/
+    - POST /api/admin/avatar/
+    - GET /api/admin/notifications/
+    - PUT /api/admin/notifications/
+    - POST /api/admin/change_password/
+    - GET /api/admin/sessions/
+    - POST /api/admin/sessions/{id}/logout/
+    - PUT /api/admin/appearance/
     """
-    
     permission_classes = [IsAuthenticated]
+
+    # PROFILE
+    @action(detail=False, methods=['get', 'put'], url_path='profile')
+    def profile(self, request):
+        user = request.user
+        try:
+            admin = CompanyAdmin.objects.get(user=user)
+        except CompanyAdmin.DoesNotExist:
+            return Response({'success': False, 'error': 'Admin profile not found'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        if request.method == 'GET':
+            return Response({
+                'success': True,
+                'data': {
+                    'full_name': admin.full_name,
+                    'email': user.email,
+                    'phone': admin.phone or '',
+                    'department': 'Admin',
+                    'avatar': admin.avatar.url if getattr(admin, 'avatar', None) else None,
+                }
+            })
+
+        full_name = request.data.get('full_name')
+        phone = request.data.get('phone')
+
+        if full_name:
+            admin.full_name = full_name
+            user.first_name = full_name.split()[0]
+            user.save()
+        if phone is not None:
+            admin.phone = phone
+        admin.save()
+
+        return Response({
+            'success': True,
+            'message': 'Profile updated successfully',
+            'data': {
+                'full_name': admin.full_name,
+                'email': user.email,
+                'phone': admin.phone or '',
+            }
+        })
+
+    # AVATAR
+    @action(detail=False, methods=['post'], url_path='avatar')
+    def avatar(self, request):
+        user = request.user
+        try:
+            admin = CompanyAdmin.objects.get(user=user)
+        except CompanyAdmin.DoesNotExist:
+            return Response({'success': False, 'error': 'Admin profile not found'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        avatar_file = request.FILES.get('avatar')
+        if not avatar_file:
+            return Response({'success': False, 'error': 'No avatar file provided'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        if avatar_file.size > 5 * 1024 * 1024:
+            return Response({'success': False, 'error': 'File size exceeds 5MB limit'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        admin.avatar = avatar_file
+        admin.save()
+
+        return Response({
+            'success': True,
+            'message': 'Avatar uploaded successfully',
+            'data': {'avatar_url': admin.avatar.url if admin.avatar else None}
+        })
+
+    # NOTIFICATIONS
+    @action(detail=False, methods=['get', 'put'], url_path='notifications')
+    def notifications(self, request):
+        # For now, just echo settings; can be stored in DB later
+        if request.method == 'GET':
+            return Response({
+                'success': True,
+                'data': {
+                    'email_notifications': True,
+                    'push_notifications': True,
+                    'sms_notifications': False,
+                    'leave_approvals': True,
+                    'task_assignments': True,
+                    'payroll_updates': True,
+                }
+            })
+        data = {
+            'email_notifications': request.data.get('email_notifications', True),
+            'push_notifications': request.data.get('push_notifications', True),
+            'sms_notifications': request.data.get('sms_notifications', False),
+            'leave_approvals': request.data.get('leave_approvals', True),
+            'task_assignments': request.data.get('task_assignments', True),
+            'payroll_updates': request.data.get('payroll_updates', True),
+        }
+        return Response({
+            'success': True,
+            'message': 'Notification settings updated successfully',
+            'data': data
+        })
+
+    # CHANGE PASSWORD (for Settings.tsx)
+    @action(detail=False, methods=['post'], url_path='change_password')
+    def change_password(self, request):
+        user = request.user
+        old_password = request.data.get('old_password')
+        new_password = request.data.get('new_password')
+        confirm_password = request.data.get('confirm_password')
+
+        if not old_password or not new_password or not confirm_password:
+            return Response({'success': False, 'error': 'All fields are required'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if new_password != confirm_password:
+            return Response({'success': False, 'error': 'New passwords do not match'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if len(new_password) < 8:
+            return Response({'success': False, 'error': 'Password must be at least 8 characters'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if not user.check_password(old_password):
+            return Response({'success': False, 'error': 'Current password is incorrect'},
+                            status=status.HTTP_401_UNAUTHORIZED)
+
+        user.set_password(new_password)
+        user.save()
+
+        try:
+            admin = CompanyAdmin.objects.get(user=user)
+            admin.temp_password_set = False
+            admin.password_changed_at = timezone.now()
+            admin.save()
+        except CompanyAdmin.DoesNotExist:
+            pass
+
+        return Response({'success': True, 'message': 'Password changed successfully'})
+
+    # SESSIONS (mock)
+    @action(detail=False, methods=['get'], url_path='sessions')
+    def sessions(self, request):
+        return Response({
+            'success': True,
+            'data': [
+                {
+                    'id': '1',
+                    'browser': 'Chrome',
+                    'device': 'Windows',
+                    'location': 'New York, US',
+                    'ip_address': '192.168.1.1',
+                    'last_active': 'Just now',
+                    'is_current': True,
+                }
+            ]
+        })
+
+    @action(detail=False, methods=['post'], url_path='sessions/(?P<session_id>[^/.]+)/logout')
+    def logout_session(self, request, session_id=None):
+        if session_id in ('1', 'current'):
+            return Response({'success': False, 'error': 'Cannot logout current session'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        return Response({'success': True, 'message': 'Session logged out successfully'})
+
+    # APPEARANCE
+    @action(detail=False, methods=['put'], url_path='appearance')
+    def appearance(self, request):
+        user = request.user
+        try:
+            admin = CompanyAdmin.objects.get(user=user)
+        except CompanyAdmin.DoesNotExist:
+            return Response({'success': False, 'error': 'Admin profile not found'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        theme = request.data.get('theme', 'system')
+        language = request.data.get('language', 'en')
+        tz_choice = request.data.get('timezone', admin.timezone)
+
+        admin.timezone = tz_choice
+        admin.save()
+
+        return Response({
+            'success': True,
+            'message': 'Appearance settings updated successfully',
+            'data': {
+                'theme': theme,
+                'language': language,
+                'timezone': tz_choice,
+            }
+        })
 
     
