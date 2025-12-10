@@ -7,6 +7,8 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useSidebarCollapse } from "@/contexts/sideBarContext"; // ✅ ADD THIS LINE
+
 import {
   LayoutDashboard,
   Users,
@@ -284,14 +286,7 @@ const subItemVariants: Variants = {
 
 export const Sidebar: React.FC = () => {
   // Load collapsed state from localStorage
-  const [isCollapsed, setIsCollapsed] = useState(() => {
-    try {
-      const saved = localStorage.getItem("sidebar:collapsed");
-      return saved ? JSON.parse(saved) : false;
-    } catch {
-      return false;
-    }
-  });
+  const { isCollapsed, setIsCollapsed } = useSidebarCollapse();
 
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);

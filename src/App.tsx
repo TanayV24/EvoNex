@@ -1,4 +1,5 @@
 // src/App.tsx
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,10 +13,9 @@ import {
 } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ChatProvider } from "@/contexts/ChatContext";
-import React from "react";
-
-// Theme
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { SidebarProvider } from "@/contexts/sideBarContext";
+import React from "react";
 
 // Pages
 import Index from "./pages/Index";
@@ -53,7 +53,11 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
       const isOnChangePasswordPage =
         window.location.pathname === "/auth/change-password";
 
-      if (needsOnboarding && !isOnOnboardingPage && !isOnChangePasswordPage) {
+      if (
+        needsOnboarding &&
+        !isOnOnboardingPage &&
+        !isOnChangePasswordPage
+      ) {
         navigate("/onboarding", { replace: true });
       }
     }
@@ -61,150 +65,145 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        Loading...
+      <div className="flex items-center justify-center min-h-screen bg-slate-900">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+          <p className="text-slate-400">Loading...</p>
+        </div>
       </div>
     );
   }
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return <>{children}</>;
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 
 // ============================================
-// APP ROUTES
+// APP COMPONENT
 // ============================================
-const AppRoutes: React.FC = () => {
-  return (
-    <Routes>
-      {/* Public routes */}
-      <Route path="/" element={<Index />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/auth/change-password" element={<ChangePassword />} />
-
-      {/* Onboarding */}
-      <Route
-        path="/onboarding"
-        element={
-          <ProtectedRoute>
-            <Onboarding />
-          </ProtectedRoute>
-        }
-      />
-
-      {/* Protected routes */}
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute>
-            <AdminDashboard />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/developer"
-        element={
-          <ProtectedRoute>
-            <DeveloperDashboard />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/employees"
-        element={
-          <ProtectedRoute>
-            <Employees />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/attendance"
-        element={
-          <ProtectedRoute>
-            <Attendance />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/tasks"
-        element={
-          <ProtectedRoute>
-            <Tasks />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/leave"
-        element={
-          <ProtectedRoute>
-            <Leave />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/settings"
-        element={
-          <ProtectedRoute>
-            <Settings />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/whiteboard"
-        element={
-          <ProtectedRoute>
-            <WhiteboardPage />
-          </ProtectedRoute>
-        }
-      />
-      {/* CHAT ROUTE */}
-      <Route
-        path="/chat"
-        element={
-          <ProtectedRoute>
-            <ChatPage />
-          </ProtectedRoute>
-        }
-      />
-
-      {/* 404 */}
-      <Route path="*" element={<NotFound />} />
-    </Routes>
-  );
-};
-
-// ============================================
-// ROOT APP
-// ============================================
-const App: React.FC = () => {
+export function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <TooltipProvider>
-          <AuthProvider>
-            <BrowserRouter>
-              <ChatProvider>
-                <AppRoutes />
-              </ChatProvider>
-              <Toaster />
-              <Sonner />
-            </BrowserRouter>
-          </AuthProvider>
-        </TooltipProvider>
-      </ThemeProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <ThemeProvider>
+            <SidebarProvider>
+              <TooltipProvider>
+                <ChatProvider>
+                  <Routes>
+                    {/* Public Routes */}
+                    <Route path="/" element={<Index />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/onboarding" element={<Onboarding />} />
+                    <Route
+                      path="/auth/change-password"
+                      element={<ChangePassword />}
+                    />
+
+                    {/* Protected Routes */}
+                    <Route
+                      path="/dashboard"
+                      element={
+                        <ProtectedRoute>
+                          <Dashboard />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin-dashboard"
+                      element={
+                        <ProtectedRoute>
+                          <AdminDashboard />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/developer-dashboard"
+                      element={
+                        <ProtectedRoute>
+                          <DeveloperDashboard />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/companies"
+                      element={
+                        <ProtectedRoute>
+                          <Dashboard />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/employees"
+                      element={
+                        <ProtectedRoute>
+                          <Employees />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/attendance"
+                      element={
+                        <ProtectedRoute>
+                          <Attendance />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/tasks"
+                      element={
+                        <ProtectedRoute>
+                          <Tasks />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/leave"
+                      element={
+                        <ProtectedRoute>
+                          <Leave />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/settings"
+                      element={
+                        <ProtectedRoute>
+                          <Settings />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/whiteboard"
+                      element={
+                        <ProtectedRoute>
+                          <WhiteboardPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/chat"
+                      element={
+                        <ProtectedRoute>
+                          <ChatPage />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    {/* Fallback - 404 */}
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+
+                  {/* Toasters for notifications */}
+                  <Toaster />
+                  <Sonner />
+                </ChatProvider>
+              </TooltipProvider>
+            </SidebarProvider>
+          </ThemeProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </QueryClientProvider>
   );
-};
+}
 
 export default App;
