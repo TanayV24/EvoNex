@@ -411,7 +411,7 @@ class AdminDashboardViewSet(viewsets.ViewSet):
     """
     permission_classes = [IsAuthenticated]
 
-    # PROFILE
+    # PROFILE - UPDATED VERSION
     @action(detail=False, methods=['get', 'put'], url_path='profile')
     def profile(self, request):
         user = request.user
@@ -425,34 +425,79 @@ class AdminDashboardViewSet(viewsets.ViewSet):
             return Response({
                 'success': True,
                 'data': {
+                    # Personal info
                     'full_name': admin.full_name,
                     'email': user.email,
                     'phone': admin.phone or '',
-                    'department': 'Admin',
                     'avatar': admin.avatar.url if getattr(admin, 'avatar', None) else None,
+
+                    # Company info (from onboarding)
+                    'company_name': admin.company_name or admin.company.name,
+                    'company_website': admin.company_website or '',
+                    'company_industry': admin.company_industry or '',
+                    'total_employees': admin.total_employees,
+
+                    # Work settings
+                    'timezone': admin.timezone,
+                    'currency': admin.currency,
+                    'working_hours_start': str(admin.working_hours_start),
+                    'working_hours_end': str(admin.working_hours_end),
+
+                    # Leave structure
+                    'casual_leave_days': admin.casual_leave_days,
+                    'sick_leave_days': admin.sick_leave_days,
+                    'personal_leave_days': admin.personal_leave_days,
                 }
             })
 
-        full_name = request.data.get('full_name')
-        phone = request.data.get('phone')
+        # PUT - Update all fields
+        data = request.data
 
-        if full_name:
-            admin.full_name = full_name
-            user.first_name = full_name.split()[0]
+        # Personal info
+        if 'full_name' in data:
+            admin.full_name = data['full_name']
+            user.first_name = data['full_name'].split()[0] if data['full_name'] else ''
             user.save()
-        if phone is not None:
-            admin.phone = phone
+        if 'phone' in data:
+            admin.phone = data['phone']
+
+        # Company info
+        if 'company_name' in data:
+            admin.company_name = data['company_name']
+            admin.company.name = data['company_name']
+            admin.company.save()
+        if 'company_website' in data:
+            admin.company_website = data['company_website']
+        if 'company_industry' in data:
+            admin.company_industry = data['company_industry']
+        if 'total_employees' in data:
+            admin.total_employees = int(data['total_employees'] or 0)
+
+        # Work settings
+        if 'timezone' in data:
+            admin.timezone = data['timezone']
+        if 'currency' in data:
+            admin.currency = data['currency']
+        if 'working_hours_start' in data:
+            admin.working_hours_start = data['working_hours_start']
+        if 'working_hours_end' in data:
+            admin.working_hours_end = data['working_hours_end']
+
+        # Leave structure
+        if 'casual_leave_days' in data:
+            admin.casual_leave_days = int(data['casual_leave_days'] or 0)
+        if 'sick_leave_days' in data:
+            admin.sick_leave_days = int(data['sick_leave_days'] or 0)
+        if 'personal_leave_days' in data:
+            admin.personal_leave_days = int(data['personal_leave_days'] or 0)
+
         admin.save()
 
         return Response({
             'success': True,
-            'message': 'Profile updated successfully',
-            'data': {
-                'full_name': admin.full_name,
-                'email': user.email,
-                'phone': admin.phone or '',
-            }
+            'message': 'Profile updated successfully'
         })
+
 
     # AVATAR
     @action(detail=False, methods=['post'], url_path='avatar')

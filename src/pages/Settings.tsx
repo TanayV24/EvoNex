@@ -32,12 +32,30 @@ import {
 // ============================================
 
 interface ProfileSettings {
+  // Personal
   full_name: string;
   email: string;
   phone: string;
-  department: string;
   avatar?: string;
+
+  // Company info
+  company_name: string;
+  company_website: string;
+  company_industry: string;
+  total_employees: number;
+
+  // Work settings
+  timezone: string;
+  currency: string;
+  working_hours_start: string;
+  working_hours_end: string;
+
+  // Leave structure
+  casual_leave_days: number;
+  sick_leave_days: number;
+  personal_leave_days: number;
 }
+
 
 interface NotificationSettings {
   email_notifications: boolean;
@@ -77,13 +95,27 @@ const Settings: React.FC = () => {
   // PROFILE TAB STATE
   // ============================================
 
-  const [profileData, setProfileData] = useState<ProfileSettings>({
-    full_name: user?.full_name || user?.name || '',
-    email: user?.email || '',
-    phone: user?.phone || '',
-    department: user?.department || '',
-    avatar: user?.avatar || '',
-  });
+const [profileData, setProfileData] = useState<ProfileSettings>({
+  full_name: user?.full_name || user?.name || '',
+  email: user?.email || '',
+  phone: user?.phone || '',
+  avatar: user?.avatar || '',
+
+  company_name: '',
+  company_website: '',
+  company_industry: '',
+  total_employees: 0,
+
+  timezone: 'IST',
+  currency: 'INR',
+  working_hours_start: '09:00',
+  working_hours_end: '18:00',
+
+  casual_leave_days: 12,
+  sick_leave_days: 6,
+  personal_leave_days: 2,
+});
+
 
   // ============================================
   // NOTIFICATIONS TAB STATE
@@ -145,12 +177,35 @@ const Settings: React.FC = () => {
         avatar: user.avatar || '',
       });
     }
+    loadProfile();
     loadSettings();
   }, [user]);
 
   // ============================================
   // API CALLS
   // ============================================
+
+  const loadProfile = async () => {
+  if (!accessToken) return;
+  try {
+    const res = await fetch('http://localhost:8000/api/admin/profile/', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    });
+    if (res.ok) {
+      const json = await res.json();
+      setProfileData(prev => ({
+        ...prev,
+        ...json.data,
+      }));
+    }
+  } catch (error) {
+    console.error('Failed to load profile:', error);
+  }
+};
+
 
   const loadSettings = async () => {
     if (!accessToken) return;
@@ -202,7 +257,20 @@ const Settings: React.FC = () => {
         body: JSON.stringify({
           full_name: profileData.full_name,
           phone: profileData.phone,
-          department: profileData.department,
+          
+          company_name: profileData.company_name,
+          company_website: profileData.company_website,
+          company_industry: profileData.company_industry,
+          total_employees: profileData.total_employees,
+          
+          timezone: profileData.timezone,
+          currency: profileData.currency,
+          working_hours_start: profileData.working_hours_start,
+          working_hours_end: profileData.working_hours_end,
+          
+          casual_leave_days: profileData.casual_leave_days,
+          sick_leave_days: profileData.sick_leave_days,
+          personal_leave_days: profileData.personal_leave_days,
         }),
       });
 
@@ -632,6 +700,8 @@ const Settings: React.FC = () => {
                       disabled={isLoading}
                     />
                   </div>
+
+                  
 
                   {/* Save Button */}
                   <Button
