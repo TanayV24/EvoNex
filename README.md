@@ -1,31 +1,89 @@
 <div align="center">
 
-# ⚙️ workos
+# ⚙️ WorkOS
 
-### A modern Vite + React + TypeScript starter with shadcn-ui & Tailwind (Lovable scaffold)
+### Modern Workforce Management Platform — Built with React, Django, TypeScript & Tailwind
 
-![Vite](https://img.shields.io/badge/Vite-Bundler-646CFF?style=for-the-badge&logo=vite&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-18.x-61DAFB?style=for-the-badge&logo=react&logoColor=white)
-![TailwindCSS](https://img.shields.io/badge/TailwindCSS-Utility--First-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)
+![Django](https://img.shields.io/badge/Django-Backend-092E20?style=for-the-badge&logo=django&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-Bundler-646CFF?style=for-the-badge&logo=vite&logoColor=white)
+![TailwindCSS](https://img.shields.io/badge/Tailwind-Utility_First-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)
 
-**A Vite + React + TypeScript template generated via Lovable — includes shadcn-ui and Tailwind CSS for building modern UIs.** :contentReference[oaicite:1]{index=1}
+**A full-stack HR & workforce operating system featuring dashboards, attendance analytics, task tracking, user authentication, and beautiful UI using shadcn-ui.**
+
+[📖 Documentation](#features) • [🐛 Report Bug](https://github.com/TanayV24/workos/issues) • [💡 Request Feature](https://github.com/TanayV24/workos/issues)
 
 </div>
 
 ---
 
-## ✨ Quick overview
+## ✨ Features
 
-This repo is a Vite TypeScript + React project scaffold (Lovable deliverable) which includes utilities and configuration for Tailwind, shadcn-ui and a modern frontend stack. The project was generated using Lovable and contains the standard configuration files you expect for a TypeScript + Vite frontend. :contentReference[oaicite:2]{index=2}
+### 👩‍💼 Workforce Management  
+- 📊 **Admin Dashboard** with KPIs & analytics  
+- 🕒 **Attendance Visualization**  
+- 📅 **Leave Balance Tracking**  
+- 📘 **Task Progress Monitoring**  
+- 🧾 **Recent Activity Feed**  
+
+### 🔐 Authentication  
+- Secure **Django-based auth system**  
+- Context-based **Auth Provider** in React  
+- Protected pages & redirect logic  
+
+### 🎨 UI/UX  
+- shadcn-ui component library  
+- Fully responsive dashboards  
+- Clean, minimal design  
+- Reusable layouts & components  
+
+### ⚙️ Developer-Friendly  
+- Vite + TypeScript for blazing fast DX  
+- Modular Django architecture  
+- API-ready backend for future expansion  
+- Scalable component structure in React  
 
 ---
 
-## 🔎 Root file & folder listing 
+## 🛠 Tech Stack
 
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### Frontend  
+- React 18  
+- TypeScript  
+- Vite  
+- TailwindCSS  
+- shadcn-ui  
+- Context API  
+- Chart.js (for analytics)
+
+</td>
+<td width="50%" valign="top">
+
+### Backend  
+- Django  
+- Django REST-friendly architecture  
+- Python 3.x  
+- Modular apps: users, companies  
+- Database via Django ORM  
+
+</td>
+</tr>
+</table>
+
+---
+
+## 📁 **Project Structure (Exact — from your repository)**  
+
+### 🔷 **Root Directory**
 ```
 
-/ (repo root)
+/workos-main
+├── backend/
 ├── public/
 ├── src/
 ├── .gitignore
@@ -43,55 +101,158 @@ This repo is a Vite TypeScript + React project scaffold (Lovable deliverable) wh
 ├── tsconfig.node.json
 └── vite.config.ts
 
+```
+
+---
+
+## 🟩 **Backend — Django Structure**
+```
+
+backend/
+├── manage.py
+├── requirements.txt
+│
+├── companies/
+│   ├── migrations/
+│   │   └── **init**.py
+│   ├── **init**.py
+│   ├── admin.py
+│   ├── apps.py
+│   ├── models.py
+│   ├── serializers.py
+│   ├── tests.py
+│   ├── urls.py
+│   └── views.py
+│
+├── users/
+│   ├── migrations/
+│   │   └── **init**.py
+│   ├── **init**.py
+│   ├── admin.py
+│   ├── apps.py
+│   ├── models.py
+│   ├── tests.py
+│   └── views.py
+│
+└── workos/
+├── **init**.py
+├── asgi.py
+├── middleware.py
+├── settings.py
+├── urls.py
+└── wsgi.py
+
+```
+
+---
+
+## 🟦 **Frontend — React + Vite + TS Structure**  
+```
+
+src/
+├── App.css
+├── App.tsx
+├── index.css
+├── main.tsx
+├── vite-env.d.ts
+│
+├── components/
+│   ├── NavLink.tsx
+│   │
+│   ├── dashboard/
+│   │   ├── AttendanceChart.tsx
+│   │   ├── KPICard.tsx
+│   │   ├── LeaveBalance.tsx
+│   │   ├── RecentActivity.tsx
+│   │   └── TaskProgress.tsx
+│   │
+│   ├── landing/
+│   │   ├── CTASection.tsx
+│   │   ├── DeepDiveAttendance.tsx
+│   │   ├── FeatureHighlights.tsx
+│   │   ├── PoweredBySection.tsx
+│   │   ├── WhyWorkOSSection.tsx
+│   │   └── WorkflowSection.tsx
+│   │
+│   ├── layout/
+│   │   ├── DashboardLayout.tsx
+│   │   ├── Header.tsx
+│   │   └── Sidebar.tsx
+│   │
+│   └── ui/   # shadcn-ui components
+│       ├── accordion.tsx
+│       ├── alert-dialog.tsx
+│       ├── alert.tsx
+│       ├── avatar.tsx
+│       ├── badge.tsx
+│       ├── button.tsx
+│       ├── card.tsx
+│       ├── dialog.tsx
+│       ├── dropdown-menu.tsx
+│       ├── input.tsx
+│       ├── label.tsx
+│       ├── progress.tsx
+│       ├── select.tsx
+│       ├── separator.tsx
+│       ├── sheet.tsx
+│       ├── table.tsx
+│       ├── tabs.tsx
+│       ├── toast.tsx
+│       ├── toggle-group.tsx
+│       ├── toggle.tsx
+│       ├── tooltip.tsx
+│       └── use-toast.ts
+│
+├── contexts/
+│   └── AuthContext.tsx
+│
+├── hooks/
+│   ├── use-mobile.tsx
+│   └── use-toast.ts
+│
+├── lib/
+│   └── utils.ts
+│
+├── pages/
+│   ├── AdminDashboard.tsx
+│   ├── Attendance.tsx
+│   ├── Dashboard.tsx
+│   ├── Employee.tsx
+│   ├── Home.tsx
+│   ├── Login.tsx
+│   ├── NotFound.tsx
+│   ├── Settings.tsx
+│   └── Tasks.tsx
+│
+└── types/
+└── workos.ts
+
 ````
 
-(These top-level files/folders are the ones visible in the repository view.) :contentReference[oaicite:3]{index=3}
+---
+
+## ⚙️ Installation & Setup
+
+### 🔧 Backend (Django)
+```bash
+cd backend
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
+````
+
+Backend runs at:
+
+```
+http://127.0.0.1:8000
+```
 
 ---
 
-## ⚙️ Tech stack (inferred from config files)
-
-- Vite (bundler) — `vite.config.ts`  
-- React + TypeScript — `tsconfig.*.json` + `.tsx` support  
-- Tailwind CSS — `tailwind.config.ts`, `postcss.config.js`  
-- shadcn-ui (component primitives) — mentioned in repo description from Lovable  
-- ESLint config — `eslint.config.js`  
-- Other config files: `package.json`, `components.json`, `bun.lockb` (optional engine lockfile). :contentReference[oaicite:5]{index=5}
-
----
-
-## 🚀 How to run (quick start)
+### 🎨 Frontend (React + Vite)
 
 ```bash
-# clone
-git clone https://github.com/TanayV24/workos.git
-cd workos
-
-# install
+cd frontend
 npm install
-
-# dev server
 npm run dev
-````
-
-(These steps are standard for Vite + npm projects and match the project's Lovable-generated quickstart hints.) ([GitHub][1])
-
-
-
 ```
-src/
-├── components/            # Reusable UI components (Buttons, Icons, Layouts)
-│   ├── ui/                # shadcn/ui primitives wrappers
-│   └── common/
-├── hooks/                 # Custom React hooks
-├── pages/                 # Page views (Home, About, etc.)
-├── routes/                # Router definitions (if using React Router)
-├── services/              # API clients & utilities (fetch/axios wrappers)
-├── styles/                # Global CSS / tailwind entry (index.css)
-├── app/                   # App root / providers / theme (optional)
-├── main.tsx               # Vite/React entry
-└── app.css / index.css    # Tailwind imports + global styles
-```
-
-This layout is aligned with Vite + React TypeScript conventions and fits the repo’s config. Use it as a canonical structure for organizing components and pages.
-
