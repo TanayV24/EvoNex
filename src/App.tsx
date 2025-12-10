@@ -1,3 +1,4 @@
+// src/App.tsx
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -5,6 +6,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import React from "react";
+
+// Theme
+import { ThemeProvider } from "@/contexts/ThemeContext";
 
 // Pages
 import Index from "./pages/Index";
@@ -61,7 +65,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   const isOnChangePasswordPage = window.location.pathname === "/auth/change-password";
 
   if (needsOnboarding && !isOnOnboardingPage && !isOnChangePasswordPage) {
-    return null; // Will redirect in useEffect
+    return null;
   }
 
   return <>{children}</>;
@@ -76,19 +80,19 @@ function AppContent() {
 
   return (
     <Routes>
-      {/* DEFAULT HOST ROUTE -> your landing page */}
+      {/* Landing at host root */}
       <Route
         path="/"
         element={
           isAuthenticated ? (
             <Navigate to="/admin/dashboard" replace />
           ) : (
-            <Index /> // your landing page
+            <Index />
           )
         }
       />
 
-      {/* Public login route */}
+      {/* Login */}
       <Route
         path="/login"
         element={
@@ -100,7 +104,7 @@ function AppContent() {
         }
       />
 
-      {/* Change Password Route */}
+      {/* Change Password */}
       <Route
         path="/auth/change-password"
         element={
@@ -110,7 +114,7 @@ function AppContent() {
         }
       />
 
-      {/* Onboarding Route */}
+      {/* Onboarding */}
       <Route
         path="/onboarding"
         element={
@@ -120,7 +124,7 @@ function AppContent() {
         }
       />
 
-      {/* Admin Routes */}
+      {/* Admin */}
       <Route
         path="/admin/dashboard"
         element={
@@ -130,7 +134,7 @@ function AppContent() {
         }
       />
 
-      {/* Developer Routes */}
+      {/* Developer */}
       <Route
         path="/developer/dashboard"
         element={
@@ -140,7 +144,7 @@ function AppContent() {
         }
       />
 
-      {/* General Routes */}
+      {/* General */}
       <Route
         path="/dashboard"
         element={
@@ -204,7 +208,7 @@ function AppContent() {
         }
       />
 
-      {/* 404 Route */}
+      {/* 404 */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
@@ -216,9 +220,11 @@ function App() {
       <TooltipProvider>
         <BrowserRouter>
           <AuthProvider>
-            <AppContent />
-            <Toaster />
-            <Sonner />
+            <ThemeProvider>
+              <AppContent />
+              <Toaster />
+              <Sonner />
+            </ThemeProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

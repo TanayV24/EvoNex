@@ -25,7 +25,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isDark, setIsDark] = useState<boolean>(() => {
     if (choice === "light") return false;
     if (choice === "dark") return true;
-    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    return (
+      window.matchMedia &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches
+    );
   });
 
   const applyDarkClass = (shouldBeDark: boolean) => {
@@ -40,7 +43,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     let mq: MediaQueryList | null = null;
 
     const updateFromSystem = () => {
-      const systemDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const systemDark =
+        window.matchMedia &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches;
       const effective = choice === "system" ? systemDark : choice === "dark";
       setIsDark(!!effective);
       applyDarkClass(!!effective);
@@ -50,8 +55,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (window.matchMedia) {
         mq = window.matchMedia("(prefers-color-scheme: dark)");
         const handler = () => updateFromSystem();
-        if (typeof mq.addEventListener === "function") mq.addEventListener("change", handler);
-        else mq.addListener(handler);
+        if (typeof mq.addEventListener === "function") {
+          mq.addEventListener("change", handler);
+        } else {
+          mq.addListener(handler);
+        }
         updateFromSystem();
       } else {
         setIsDark(false);
@@ -66,8 +74,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => {
       if (mq) {
         try {
-          if (typeof mq.removeEventListener === "function") mq.removeEventListener("change", updateFromSystem);
-          else mq.removeListener(updateFromSystem);
+          if (typeof mq.removeEventListener === "function") {
+            mq.removeEventListener("change", updateFromSystem);
+          } else {
+            mq.removeListener(updateFromSystem);
+          }
         } catch {}
       }
     };
@@ -80,7 +91,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setChoiceState(c);
   };
 
-  return <ThemeContext.Provider value={{ choice, setChoice, isDark }}>{children}</ThemeContext.Provider>;
+  return (
+    <ThemeContext.Provider value={{ choice, setChoice, isDark }}>
+      {children}
+    </ThemeContext.Provider>
+  );
 };
 
 export const useTheme = (): ThemeCtx => {

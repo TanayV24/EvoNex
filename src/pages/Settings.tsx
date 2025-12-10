@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import { useTheme } from "@/contexts/ThemeContext";
 import {
   User,
   Building2,
@@ -27,9 +28,11 @@ import {
   LogOut,
 } from 'lucide-react';
 
+
 // ============================================
 // TYPES
 // ============================================
+
 
 interface ProfileSettings {
   // Personal
@@ -38,11 +41,13 @@ interface ProfileSettings {
   phone: string;
   avatar?: string;
 
+
   // Company info
   company_name: string;
   company_website: string;
   company_industry: string;
   total_employees: number;
+
 
   // Work settings
   timezone: string;
@@ -50,11 +55,13 @@ interface ProfileSettings {
   working_hours_start: string;
   working_hours_end: string;
 
+
   // Leave structure
   casual_leave_days: number;
   sick_leave_days: number;
   personal_leave_days: number;
 }
+
 
 
 interface NotificationSettings {
@@ -66,11 +73,13 @@ interface NotificationSettings {
   payroll_updates: boolean;
 }
 
+
 interface PasswordChangeData {
   current_password: string;
   new_password: string;
   confirm_password: string;
 }
+
 
 interface Session {
   id: string;
@@ -82,18 +91,24 @@ interface Session {
   is_current: boolean;
 }
 
+
 // ============================================
 // MAIN COMPONENT
 // ============================================
+
 
 const Settings: React.FC = () => {
   const { user, accessToken, updateUserData } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [isLoading, setIsLoading] = useState(false);
 
+  // THEME FROM CONTEXT (ADDED)
+  const { choice: themeChoice, setChoice: setThemeChoice } = useTheme();
+
   // ============================================
   // PROFILE TAB STATE
   // ============================================
+
 
 const [profileData, setProfileData] = useState<ProfileSettings>({
   full_name: user?.full_name || user?.name || '',
@@ -101,15 +116,18 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
   phone: user?.phone || '',
   avatar: user?.avatar || '',
 
+
   company_name: '',
   company_website: '',
   company_industry: '',
   total_employees: 0,
 
+
   timezone: 'IST',
   currency: 'INR',
   working_hours_start: '09:00',
   working_hours_end: '18:00',
+
 
   casual_leave_days: 12,
   sick_leave_days: 6,
@@ -117,9 +135,11 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
 });
 
 
+
   // ============================================
   // NOTIFICATIONS TAB STATE
   // ============================================
+
 
   const [notifications, setNotifications] = useState<NotificationSettings>({
     email_notifications: true,
@@ -130,15 +150,18 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
     payroll_updates: true,
   });
 
+
   // ============================================
   // SECURITY TAB STATE
   // ============================================
+
 
   const [passwordData, setPasswordData] = useState<PasswordChangeData>({
     current_password: '',
     new_password: '',
     confirm_password: '',
   });
+
 
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -155,17 +178,20 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
     },
   ]);
 
+
   // ============================================
   // APPEARANCE TAB STATE
   // ============================================
 
-  const [themeChoice, setThemeChoice] = useState<'light' | 'dark' | 'system'>('system');
+  // REMOVED: const [themeChoice, setThemeChoice] = useState<'light' | 'dark' | 'system'>('system');
   const [language, setLanguage] = useState('en');
   const [timezone, setTimezone] = useState('IST');
+
 
   // ============================================
   // LOAD DATA ON MOUNT
   // ============================================
+
 
   useEffect(() => {
     if (user) {
@@ -181,9 +207,11 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
     loadSettings();
   }, [user]);
 
+
   // ============================================
   // API CALLS
   // ============================================
+
 
   const loadProfile = async () => {
   if (!accessToken) return;
@@ -207,8 +235,10 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
 };
 
 
+
   const loadSettings = async () => {
     if (!accessToken) return;
+
 
     try {
       setIsLoading(true);
@@ -221,6 +251,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
         },
       });
 
+
       if (notifResponse.ok) {
         const notifData = await notifResponse.json();
         setNotifications(notifData.data || notifications);
@@ -232,9 +263,11 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
     }
   };
 
+
   // ============================================
   // PROFILE UPDATE
   // ============================================
+
 
   const handleProfileSave = async () => {
     if (!profileData.full_name.trim()) {
@@ -245,6 +278,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
       });
       return;
     }
+
 
     setIsLoading(true);
     try {
@@ -273,6 +307,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
           personal_leave_days: profileData.personal_leave_days,
         }),
       });
+
 
       if (response.ok) {
         const data = await response.json();
@@ -304,13 +339,16 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
     }
   };
 
+
   // ============================================
   // AVATAR UPLOAD
   // ============================================
 
+
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
@@ -322,6 +360,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
       return;
     }
 
+
     // Validate file type
     if (!file.type.startsWith('image/')) {
       toast({
@@ -332,10 +371,12 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
       return;
     }
 
+
     setIsLoading(true);
     try {
       const formData = new FormData();
       formData.append('avatar', file);
+
 
       const response = await fetch('http://localhost:8000/api/admin/avatar/', {
         method: 'POST',
@@ -344,6 +385,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
         },
         body: formData,
       });
+
 
       if (response.ok) {
         const data = await response.json();
@@ -372,9 +414,11 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
     }
   };
 
+
   // ============================================
   // NOTIFICATIONS UPDATE
   // ============================================
+
 
   const handleNotificationToggle = async (
     key: keyof NotificationSettings,
@@ -382,6 +426,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
   ) => {
     const updatedNotifications = { ...notifications, [key]: value };
     setNotifications(updatedNotifications);
+
 
     try {
       const response = await fetch('http://localhost:8000/api/admin/notifications/', {
@@ -392,6 +437,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
         },
         body: JSON.stringify(updatedNotifications),
       });
+
 
       if (!response.ok) {
         const error = await response.json();
@@ -412,12 +458,15 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
     }
   };
 
+
   // ============================================
   // PASSWORD CHANGE
   // ============================================
 
+
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
+
 
     // Validation
     if (!passwordData.current_password || !passwordData.new_password || !passwordData.confirm_password) {
@@ -429,6 +478,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
       return;
     }
 
+
     if (passwordData.new_password !== passwordData.confirm_password) {
       toast({
         title: 'Error',
@@ -438,6 +488,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
       return;
     }
 
+
     if (passwordData.new_password.length < 8) {
       toast({
         title: 'Error',
@@ -446,6 +497,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
       });
       return;
     }
+
 
     setIsLoading(true);
     try {
@@ -461,6 +513,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
           confirm_password: passwordData.confirm_password,
         }),
       });
+
 
       if (response.ok) {
         toast({
@@ -491,9 +544,11 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
     }
   };
 
+
   // ============================================
   // LOGOUT SESSION
   // ============================================
+
 
   const handleLogoutSession = async (sessionId: string) => {
     if (sessionId === 'current') {
@@ -505,6 +560,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
       return;
     }
 
+
     try {
       const response = await fetch(`http://localhost:8000/api/admin/sessions/${sessionId}/logout/`, {
         method: 'POST',
@@ -512,6 +568,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
           'Authorization': `Bearer ${accessToken}`,
         },
       });
+
 
       if (response.ok) {
         setSessions(sessions.filter((s) => s.id !== sessionId));
@@ -529,9 +586,11 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
     }
   };
 
+
   // ============================================
   // APPEARANCE UPDATE
   // ============================================
+
 
   const handleAppearanceSave = async () => {
     setIsLoading(true);
@@ -549,13 +608,9 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
         }),
       });
 
+
       if (response.ok) {
-        // Apply theme locally
-        if (themeChoice === 'dark') {
-          document.documentElement.classList.add('dark');
-        } else if (themeChoice === 'light') {
-          document.documentElement.classList.remove('dark');
-        }
+        // REMOVED manual DOM class toggling - context handles it now
         toast({
           title: 'Success',
           description: 'Appearance settings updated',
@@ -572,9 +627,11 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
     }
   };
 
+
   // ============================================
   // RENDER
   // ============================================
+
 
   return (
     <DashboardLayout>
@@ -584,6 +641,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
           <p className="text-gray-600 dark:text-gray-400">Manage your account and preferences</p>
         </div>
+
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -605,6 +663,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
               <span className="hidden sm:inline">Appearance</span>
             </TabsTrigger>
           </TabsList>
+
 
           {/* TAB 1: PROFILE */}
           <TabsContent value="profile" className="space-y-4 mt-6">
@@ -652,6 +711,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
                     </div>
                   </div>
 
+
                   {/* Full Name */}
                   <div className="space-y-2">
                     <Label htmlFor="full-name">Full Name</Label>
@@ -663,6 +723,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
                       disabled={isLoading}
                     />
                   </div>
+
 
                   {/* Email (Read-only) */}
                   <div className="space-y-2">
@@ -677,6 +738,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
                     <p className="text-xs text-gray-500">Email cannot be changed</p>
                   </div>
 
+
                   {/* Phone */}
                   <div className="space-y-2">
                     <Label htmlFor="phone">Phone</Label>
@@ -689,6 +751,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
                     />
                   </div>
 
+
                   {/* Department */}
                   <div className="space-y-2">
                     <Label htmlFor="department">Department</Label>
@@ -700,6 +763,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
                       disabled={isLoading}
                     />
                   </div>
+
 
                   
 
@@ -726,6 +790,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
             </motion.div>
           </TabsContent>
 
+
           {/* TAB 2: NOTIFICATIONS */}
           <TabsContent value="notifications" className="space-y-4 mt-6">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
@@ -750,6 +815,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
                     />
                   </div>
 
+
                   {/* Push Notifications */}
                   <div className="flex items-center justify-between p-4 border rounded-lg">
                     <div>
@@ -764,6 +830,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
                       disabled={isLoading}
                     />
                   </div>
+
 
                   {/* SMS Notifications */}
                   <div className="flex items-center justify-between p-4 border rounded-lg">
@@ -781,6 +848,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
                   </div>
                 </CardContent>
               </Card>
+
 
               <Card>
                 <CardHeader>
@@ -803,6 +871,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
                     />
                   </div>
 
+
                   {/* Task Assignments */}
                   <div className="flex items-center justify-between p-4 border rounded-lg">
                     <div>
@@ -817,6 +886,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
                       disabled={isLoading}
                     />
                   </div>
+
 
                   {/* Payroll Updates */}
                   <div className="flex items-center justify-between p-4 border rounded-lg">
@@ -836,6 +906,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
               </Card>
             </motion.div>
           </TabsContent>
+
 
           {/* TAB 3: SECURITY */}
           <TabsContent value="security" className="space-y-4 mt-6">
@@ -877,6 +948,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
                       </div>
                     </div>
 
+
                     {/* New Password */}
                     <div className="space-y-2">
                       <Label htmlFor="new-password">New Password</Label>
@@ -907,6 +979,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
                       <p className="text-xs text-gray-500">At least 8 characters</p>
                     </div>
 
+
                     {/* Confirm Password */}
                     <div className="space-y-2">
                       <Label htmlFor="confirm-password">Confirm Password</Label>
@@ -936,6 +1009,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
                       </div>
                     </div>
 
+
                     <Button type="submit" disabled={isLoading} className="w-full">
                       {isLoading ? (
                         <>
@@ -949,6 +1023,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
                   </form>
                 </CardContent>
               </Card>
+
 
               {/* Two-Factor Authentication */}
               <Card className="mt-4">
@@ -967,6 +1042,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
                   <p className="text-xs text-gray-500 mt-3">2FA setup coming soon</p>
                 </CardContent>
               </Card>
+
 
               {/* Active Sessions */}
               <Card className="mt-4">
@@ -1010,6 +1086,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
             </motion.div>
           </TabsContent>
 
+
           {/* TAB 4: APPEARANCE */}
           <TabsContent value="appearance" className="space-y-4 mt-6">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
@@ -1019,10 +1096,13 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
                   <CardDescription>Customize the appearance of the application</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Color Scheme */}
+                  {/* Color Scheme - CHANGED: now uses setThemeChoice from context */}
                   <div className="space-y-2">
                     <Label htmlFor="color-scheme">Color Scheme</Label>
-                    <Select value={themeChoice} onValueChange={(value: any) => setThemeChoice(value)}>
+                    <Select 
+                      value={themeChoice} 
+                      onValueChange={(value: any) => setThemeChoice(value as 'light' | 'dark' | 'system')}
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -1033,6 +1113,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
                       </SelectContent>
                     </Select>
                   </div>
+
 
                   {/* Language */}
                   <div className="space-y-2">
@@ -1050,6 +1131,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
                     </Select>
                   </div>
 
+
                   {/* Timezone */}
                   <div className="space-y-2">
                     <Label htmlFor="timezone">Time Zone</Label>
@@ -1065,6 +1147,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
                       </SelectContent>
                     </Select>
                   </div>
+
 
                   {/* Save Button */}
                   <Button onClick={handleAppearanceSave} disabled={isLoading} className="w-full">
@@ -1089,5 +1172,6 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
     </DashboardLayout>
   );
 };
+
 
 export default Settings;
