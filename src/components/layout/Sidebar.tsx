@@ -1,5 +1,4 @@
-// src/components/layout/Sidebar.tsx
-// CRAZY ANIMATED SIDEBAR - Floating Buttons for Grouped Items
+// src/components/layout/Sidebar.tsx - FINAL POLISHED VERSION
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
@@ -7,8 +6,7 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { useSidebarCollapse } from "@/contexts/sideBarContext"; // ✅ ADD THIS LINE
-
+import { useSidebarCollapse } from "@/contexts/SidebarContext";
 import {
   LayoutDashboard,
   Users,
@@ -221,7 +219,6 @@ const itemVariants: Variants = {
   },
 };
 
-// Floating buttons animation
 const floatingButtonsVariants: Variants = {
   hidden: { opacity: 0, scale: 0.8, y: 20 },
   visible: {
@@ -285,9 +282,7 @@ const subItemVariants: Variants = {
 };
 
 export const Sidebar: React.FC = () => {
-  // Load collapsed state from localStorage
   const { isCollapsed, setIsCollapsed } = useSidebarCollapse();
-
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [floatingMenu, setFloatingMenu] = useState<string | null>(null);
@@ -296,14 +291,6 @@ export const Sidebar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Save collapsed state to localStorage whenever it changes
-  useEffect(() => {
-    try {
-      localStorage.setItem("sidebar:collapsed", JSON.stringify(isCollapsed));
-    } catch {}
-  }, [isCollapsed]);
-
-  // Close floating menu when route changes
   useEffect(() => {
     setFloatingMenu(null);
   }, [location]);
@@ -312,10 +299,8 @@ export const Sidebar: React.FC = () => {
 
   const toggleGroup = (groupLabel: string) => {
     if (isCollapsed) {
-      // When collapsed, show floating buttons
       setFloatingMenu(floatingMenu === groupLabel ? null : groupLabel);
     } else {
-      // When expanded, use normal expand/collapse
       setExpandedGroups((prev) =>
         prev.includes(groupLabel)
           ? prev.filter((g) => g !== groupLabel)
@@ -354,7 +339,6 @@ export const Sidebar: React.FC = () => {
 
   let itemCounter = 0;
 
-  // Theme colors
   const darkTheme = {
     bg: "bg-gradient-to-br from-slate-950 via-slate-900 to-slate-900",
     border: "border-blue-500/20",
@@ -392,7 +376,6 @@ export const Sidebar: React.FC = () => {
 
   return (
     <>
-      {/* Floating Menu Backdrop */}
       <AnimatePresence>
         {floatingMenu && (
           <motion.div
@@ -416,22 +399,21 @@ export const Sidebar: React.FC = () => {
           textColor
         )}
       >
-        {/* Animated Background Glow */}
-        <div className={cn("absolute top-0 right-0 w-96 h-96 rounded-full blur-3xl animate-pulse", theme.glow)} />
-        <div className={cn("absolute bottom-0 left-0 w-96 h-96 rounded-full blur-3xl animate-pulse", theme.glowPurple)} />
+        <div className={cn("absolute top-0 right-0 w-96 h-96 rounded-full blur-3xl animate-pulse pointer-events-none", theme.glow)} />
+        <div className={cn("absolute bottom-0 left-0 w-96 h-96 rounded-full blur-3xl animate-pulse pointer-events-none", theme.glowPurple)} />
 
         {/* Logo Section */}
         <motion.div
           layout
           className={cn(
-            "relative p-4 border-b flex items-center gap-3 z-10 transition-colors duration-300",
+            "relative p-4 border-b flex items-center gap-3 z-20 transition-colors duration-300 flex-shrink-0 bg-gradient-to-b from-slate-950/80 to-slate-950/40 backdrop-blur-sm",
             theme.border
           )}
           whileHover={{ scale: 1.02 }}
         >
           <motion.div
             className={cn(
-              "w-12 h-12 rounded-xl flex items-center justify-center font-bold text-white text-lg shadow-lg",
+              "w-12 h-12 rounded-xl flex items-center justify-center font-bold text-white text-lg shadow-lg flex-shrink-0",
               theme.logo
             )}
             whileHover={{
@@ -449,21 +431,21 @@ export const Sidebar: React.FC = () => {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ delay: 0.1 }}
+                className="min-w-0 flex-1"
               >
                 <motion.h1
                   className={cn(
-                    "font-bold text-lg transition-colors duration-300",
+                    "font-bold text-lg transition-colors duration-300 truncate",
                     isDark
                       ? "bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent"
                       : "text-blue-600"
                   )}
-                  animate={{ letterSpacing: "0.05em" }}
                 >
                   WorkOS
                 </motion.h1>
                 <motion.p
                   className={cn(
-                    "text-xs transition-colors duration-300",
+                    "text-xs transition-colors duration-300 truncate",
                     isDark ? "text-blue-400/60" : "text-blue-500/70"
                   )}
                   animate={{ opacity: [0.6, 1, 0.6] }}
@@ -476,14 +458,14 @@ export const Sidebar: React.FC = () => {
           </AnimatePresence>
         </motion.div>
 
-        {/* Navigation Sections - No Scrollbar */}
+        {/* Navigation */}
         <motion.nav
           layout
-          className={cn("flex-1 py-4 px-3 relative z-10 overflow-hidden transition-colors duration-300")}
+          className="flex-1 overflow-hidden z-20 relative"
           style={{ scrollbarWidth: "none" }}
         >
           <div
-            className="h-full flex flex-col gap-4 overflow-y-auto"
+            className="h-full flex flex-col gap-4 py-4 px-3 overflow-y-auto"
             style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
           >
             <style>{`
@@ -514,7 +496,7 @@ export const Sidebar: React.FC = () => {
                   </motion.p>
                 )}
 
-                <div className="space-y-1 relative">
+                <div className="space-y-1">
                   {section.items.map((item) => {
                     const isGrouped = isGroupedMenuItem(item);
                     const isExpanded = expandedGroups.includes(item.label);
@@ -529,7 +511,7 @@ export const Sidebar: React.FC = () => {
                               <motion.button
                                 onClick={() => toggleGroup(item.label)}
                                 className={cn(
-                                  "w-full flex items-center gap-3 px-3 py-3 rounded-xl relative group transition-all duration-300",
+                                  "w-full flex items-center gap-3 px-3 py-3 rounded-lg relative group transition-all duration-300",
                                   theme.hoverBg,
                                   isFloatingOpen && (isDark ? "bg-blue-500/20" : "bg-blue-100/60")
                                 )}
@@ -540,7 +522,7 @@ export const Sidebar: React.FC = () => {
                                 onHoverEnd={() => setHoveredItem(null)}
                               >
                                 <motion.div
-                                  className="relative"
+                                  className="relative flex-shrink-0"
                                   whileHover={{ scale: 1.2 }}
                                   whileTap={{ scale: 0.95 }}
                                 >
@@ -556,7 +538,7 @@ export const Sidebar: React.FC = () => {
                                 {!isCollapsed && (
                                   <>
                                     <motion.span
-                                      className="flex-1 text-sm font-semibold text-left transition-colors duration-300"
+                                      className="flex-1 text-sm font-semibold text-left transition-colors duration-300 truncate"
                                       animate={{
                                         color:
                                           hoveredItem === item.label
@@ -575,6 +557,7 @@ export const Sidebar: React.FC = () => {
                                         rotate: isExpanded ? 180 : 0,
                                       }}
                                       transition={{ duration: 0.3 }}
+                                      className="flex-shrink-0"
                                     >
                                       <ChevronDown className="w-4 h-4" />
                                     </motion.div>
@@ -583,13 +566,12 @@ export const Sidebar: React.FC = () => {
                               </motion.button>
                             </TooltipTrigger>
                             {isCollapsed && (
-                              <TooltipContent side="right" className={theme.tooltipBg}>
+                              <TooltipContent side="right" className={theme.tooltipBg} sideOffset={8}>
                                 {item.label}
                               </TooltipContent>
                             )}
                           </Tooltip>
 
-                          {/* EXPANDED MODE - Inline collapse */}
                           <AnimatePresence mode="wait">
                             {isExpanded && !isCollapsed && (
                               <motion.div
@@ -606,7 +588,7 @@ export const Sidebar: React.FC = () => {
                                         to={subItem.path}
                                         className={({ isActive }) =>
                                           cn(
-                                            "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm relative group transition-colors duration-300",
+                                            "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm relative group transition-colors duration-300 min-w-0",
                                             isActive
                                               ? isDark
                                                 ? "text-blue-300"
@@ -633,10 +615,10 @@ export const Sidebar: React.FC = () => {
                                                 }}
                                               />
                                             )}
-                                            <motion.div whileHover={{ scale: 1.1 }} className="relative z-10">
+                                            <motion.div whileHover={{ scale: 1.1 }} className="relative z-10 flex-shrink-0">
                                               <subItem.icon className="w-4 h-4" />
                                             </motion.div>
-                                            <motion.span className={cn("relative z-10 transition-colors duration-300", isDark ? "group-hover:text-blue-300" : "group-hover:text-blue-600")}>
+                                            <motion.span className={cn("relative z-10 transition-colors duration-300 truncate", isDark ? "group-hover:text-blue-300" : "group-hover:text-blue-600")}>
                                               {subItem.label}
                                             </motion.span>
                                           </>
@@ -678,7 +660,7 @@ export const Sidebar: React.FC = () => {
                                 animate="visible"
                                 whileHover="hover"
                                 whileTap={{ scale: 0.95 }}
-                                className={cn("flex items-center gap-3 px-3 py-3 rounded-xl relative group transition-colors duration-300", theme.hoverBg)}
+                                className={cn("flex items-center gap-3 px-3 py-3 rounded-lg relative group transition-colors duration-300 min-w-0", theme.hoverBg)}
                                 onHoverStart={() => setHoveredItem(item.label)}
                                 onHoverEnd={() => setHoveredItem(null)}
                               >
@@ -686,7 +668,7 @@ export const Sidebar: React.FC = () => {
                                   <motion.div
                                     layoutId="active-bg"
                                     className={cn(
-                                      "absolute inset-0 rounded-xl transition-colors duration-300",
+                                      "absolute inset-0 rounded-lg transition-colors duration-300",
                                       isDark
                                         ? "bg-gradient-to-r from-blue-500/20 to-purple-500/10"
                                         : "bg-gradient-to-r from-blue-100/60 to-purple-100/30"
@@ -700,7 +682,7 @@ export const Sidebar: React.FC = () => {
                                 )}
 
                                 <motion.div
-                                  className="relative z-10"
+                                  className="relative z-10 flex-shrink-0"
                                   whileHover={{ scale: 1.2, rotate: 10 }}
                                   whileTap={{ scale: 0.9 }}
                                 >
@@ -724,7 +706,7 @@ export const Sidebar: React.FC = () => {
 
                                 {!isCollapsed && (
                                   <motion.span
-                                    className="text-sm font-semibold relative z-10 transition-colors duration-300"
+                                    className="text-sm font-semibold relative z-10 transition-colors duration-300 truncate flex-1"
                                     animate={{
                                       color:
                                         hoveredItem === item.label || isActive
@@ -749,7 +731,7 @@ export const Sidebar: React.FC = () => {
                                       duration: 2,
                                       repeat: Infinity,
                                     }}
-                                    className="ml-auto"
+                                    className="ml-auto flex-shrink-0"
                                   >
                                     <Sparkles className={cn("w-4 h-4 transition-colors duration-300", isDark ? "text-blue-400" : "text-blue-500")} />
                                   </motion.div>
@@ -759,7 +741,7 @@ export const Sidebar: React.FC = () => {
                           </NavLink>
                         </TooltipTrigger>
                         {isCollapsed && (
-                          <TooltipContent side="right" className={theme.tooltipBg}>
+                          <TooltipContent side="right" className={theme.tooltipBg} sideOffset={8}>
                             {item.label}
                           </TooltipContent>
                         )}
@@ -772,11 +754,11 @@ export const Sidebar: React.FC = () => {
           </div>
         </motion.nav>
 
-        {/* Quick Actions */}
+        {/* Quick Actions - Fixed Z-index */}
         <motion.div
           layout
           className={cn(
-            "px-2 py-3 border-t flex items-center justify-between gap-2 relative z-10 transition-colors duration-300",
+            "px-2 py-3 border-t flex items-center justify-between gap-2 relative z-20 transition-colors duration-300 flex-shrink-0 bg-gradient-to-t from-slate-950/80 to-slate-950/40 backdrop-blur-sm",
             theme.border
           )}
         >
@@ -795,14 +777,14 @@ export const Sidebar: React.FC = () => {
                   <motion.button
                     whileHover={{ scale: 1.1, y: -2 }}
                     whileTap={{ scale: 0.95 }}
-                    className={cn("flex items-center justify-center w-10 h-10 rounded-lg transition-all relative group", theme.hoverBg)}
+                    className={cn("flex items-center justify-center w-10 h-10 rounded-lg transition-all relative group flex-shrink-0", theme.hoverBg)}
                   >
                     <Bell className={cn("w-5 h-5 relative z-10 transition-all", isActive && "animate-bounce")} />
                   </motion.button>
                 )}
               </NavLink>
             </TooltipTrigger>
-            <TooltipContent side="right" className={theme.tooltipBg}>
+            <TooltipContent side="right" className={theme.tooltipBg} sideOffset={8}>
               Notifications
             </TooltipContent>
           </Tooltip>
@@ -822,14 +804,14 @@ export const Sidebar: React.FC = () => {
                   <motion.button
                     whileHover={{ scale: 1.1, rotate: 45 }}
                     whileTap={{ scale: 0.95 }}
-                    className={cn("flex items-center justify-center w-10 h-10 rounded-lg transition-all relative group", theme.hoverBg)}
+                    className={cn("flex items-center justify-center w-10 h-10 rounded-lg transition-all relative group flex-shrink-0", theme.hoverBg)}
                   >
                     <Settings className="w-5 h-5 relative z-10" />
                   </motion.button>
                 )}
               </NavLink>
             </TooltipTrigger>
-            <TooltipContent side="right" className={theme.tooltipBg}>
+            <TooltipContent side="right" className={theme.tooltipBg} sideOffset={8}>
               Settings
             </TooltipContent>
           </Tooltip>
@@ -838,10 +820,10 @@ export const Sidebar: React.FC = () => {
         {/* User Profile */}
         <motion.div
           layout
-          className={cn("p-3 border-t flex items-center gap-3 relative z-10 transition-colors duration-300", theme.border)}
+          className={cn("p-3 border-t flex items-center gap-3 relative z-20 transition-colors duration-300 flex-shrink-0 bg-gradient-to-t from-slate-950/80 to-slate-950/40 backdrop-blur-sm", theme.border)}
           whileHover={{ scale: 1.02 }}
         >
-          <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} className="relative">
+          <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} className="relative flex-shrink-0">
             <Avatar className={cn("w-10 h-10 border-2 relative z-10 transition-colors duration-300", isDark ? "border-blue-500" : "border-blue-500")}>
               <AvatarImage src={user.avatar_url} />
               <AvatarFallback className={cn("text-white transition-all duration-300", theme.logo)}>
@@ -862,7 +844,7 @@ export const Sidebar: React.FC = () => {
                   {displayName}
                 </p>
                 <motion.p
-                  className={cn("text-xs capitalize transition-colors duration-300", isDark ? "text-blue-400/70" : "text-blue-500/70")}
+                  className={cn("text-xs capitalize transition-colors duration-300 truncate", isDark ? "text-blue-400/70" : "text-blue-500/70")}
                   animate={{ opacity: [0.6, 1, 0.6] }}
                   transition={{ duration: 3, repeat: Infinity }}
                 >
@@ -876,14 +858,17 @@ export const Sidebar: React.FC = () => {
             <TooltipTrigger asChild>
               <motion.button
                 onClick={handleLogout}
-                whileHover={{ scale: 1.1, color: "#ff6b6b" }}
+                whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
-                className={cn("flex items-center justify-center w-8 h-8 rounded-lg transition-all relative group", isDark ? "text-slate-400" : "text-slate-600")}
+                className={cn(
+                  "flex items-center justify-center w-8 h-8 rounded-lg transition-all relative group flex-shrink-0",
+                  isDark ? "text-slate-400 hover:text-red-400 hover:bg-red-500/10" : "text-slate-600 hover:text-red-500 hover:bg-red-100"
+                )}
               >
-                <LogOut className="w-4 h-4 relative z-10" />
+                <LogOut className="w-4 h-4 relative z-10 transition-colors" />
               </motion.button>
             </TooltipTrigger>
-            <TooltipContent side="right" className={isDark ? "bg-red-600" : "bg-red-500"}>
+            <TooltipContent side="top" className={isDark ? "bg-red-600" : "bg-red-500"} sideOffset={8}>
               Logout
             </TooltipContent>
           </Tooltip>
@@ -895,9 +880,9 @@ export const Sidebar: React.FC = () => {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           className={cn(
-            "w-full p-3 border-t flex items-center justify-center transition-all relative group",
+            "w-full p-3 border-t flex items-center justify-center transition-all relative group flex-shrink-0 z-20",
             theme.border,
-            isDark ? "hover:text-blue-400 text-slate-400" : "hover:text-blue-600 text-slate-600"
+            isDark ? "hover:text-blue-400 text-slate-400 bg-gradient-to-t from-slate-950/80 to-slate-950/40" : "hover:text-blue-600 text-slate-600 bg-gradient-to-t from-slate-100/80 to-slate-100/40"
           )}
         >
           <motion.div
@@ -913,7 +898,7 @@ export const Sidebar: React.FC = () => {
         </motion.button>
       </motion.aside>
 
-      {/* FLOATING BUTTONS MENU */}
+      {/* FLOATING BUTTONS */}
       <AnimatePresence>
         {floatingMenu && isCollapsed && (
           <motion.div
@@ -926,11 +911,10 @@ export const Sidebar: React.FC = () => {
               theme.floatingBg
             )}
           >
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 gap-2">
               <motion.h3
                 className={cn(
-                  "font-bold text-lg",
+                  "font-bold text-base transition-colors duration-300 truncate",
                   isDark ? "text-blue-300" : "text-blue-600"
                 )}
               >
@@ -943,7 +927,7 @@ export const Sidebar: React.FC = () => {
                 whileTap={{ scale: 0.9 }}
                 onClick={() => setFloatingMenu(null)}
                 className={cn(
-                  "p-1 rounded-lg transition-colors",
+                  "p-1 rounded-lg transition-colors flex-shrink-0",
                   isDark ? "hover:bg-slate-700/50" : "hover:bg-slate-200/50"
                 )}
               >
@@ -951,7 +935,6 @@ export const Sidebar: React.FC = () => {
               </motion.button>
             </div>
 
-            {/* Floating Buttons */}
             <div className="flex flex-col gap-3">
               {menuSections
                 .flatMap((s) => s.items)
@@ -965,7 +948,7 @@ export const Sidebar: React.FC = () => {
                       whileHover="hover"
                       onClick={() => handleFloatingButtonClick(subItem.path)}
                       className={cn(
-                        "flex items-center gap-3 px-6 py-3.5 rounded-xl font-semibold transition-all duration-300",
+                        "flex items-center gap-3 px-6 py-3.5 rounded-xl font-semibold transition-all duration-300 whitespace-nowrap",
                         isActive
                           ? isDark
                             ? "bg-blue-500/30 text-blue-300"
@@ -975,13 +958,13 @@ export const Sidebar: React.FC = () => {
                           : "bg-slate-200/50 text-slate-700 hover:bg-blue-50/80 hover:text-blue-600"
                       )}
                     >
-                      <subItem.icon className="w-5 h-5" />
+                      <subItem.icon className="w-5 h-5 flex-shrink-0" />
                       <span>{subItem.label}</span>
                       {isActive && (
                         <motion.div
                           animate={{ x: [0, 3, 0] }}
                           transition={{ duration: 1.5, repeat: Infinity }}
-                          className="ml-auto"
+                          className="ml-auto flex-shrink-0"
                         >
                           <Sparkles className="w-4 h-4" />
                         </motion.div>
