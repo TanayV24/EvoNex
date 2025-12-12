@@ -10,7 +10,7 @@ import React, {
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-export type UserRole = 'developer' | 'admin' | 'manager' | 'employee';
+type UserRole = 'company_admin' | 'hr' | 'manager' | 'employee' | 'department_head' | 'admin';
 
 export interface User {
   id: string;
@@ -26,7 +26,8 @@ export interface User {
   full_name?: string;
   personal_email?: string;
   temp_password?: boolean;
-  company_setup_completed?: boolean;
+  company_setup_completed?: boolean;  // ✅ ADD THIS
+  profile_completed?: boolean;
   verified?: boolean;
 }
 

@@ -205,3 +205,87 @@ class CompanyRegistrationToken(models.Model):
     def generate_temp_password():
         import secrets
         return secrets.token_urlsafe(12)
+    
+# ============================================
+# DEPARTMENT MODEL
+# ============================================
+
+class Department(models.Model):
+    """
+    Department model for organizing employees
+    Each company can have multiple departments (HR, Frontend, Backend, Surgery, etc.)
+    
+    Connects to:
+    - Company (which department belongs to)
+    - User (as head/manager of department)
+    """
+    
+    # Primary Key
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    
+    # Relations
+    company = models.ForeignKey(
+        'Company',
+        on_delete=models.CASCADE,
+        related_name='departments'
+    )
+    
+    head = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='department_head_of',
+        help_text="Department head/manager",
+        to_field='id',
+    )
+    
+    # Basic Information
+    name = models.CharField(
+        max_length=100,
+        help_text="e.g., HR, Frontend, Backend, Surgery, Cardiology, etc."
+    )
+    
+    code = models.CharField(
+        max_length=20,
+        unique=True,
+        null=True,
+        blank=True,
+        help_text="Department code (e.g., HR-01)"
+    )
+    
+    description = models.TextField(
+        null=True,
+        blank=True,
+        help_text="Department description"
+    )
+    
+    # Budget
+    budget = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Department budget"
+    )
+    
+    # Status
+    is_active = models.BooleanField(default=True)
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        db_table = 'departments'
+        unique_together = ['company', 'name']  # One department name per company
+        ordering = ['name']
+        indexes = [
+            models.Index(fields=['company', 'name']),
+            models.Index(fields=['company_id', 'head_id']),
+            models.Index(fields=['is_active']),
+        ]
+    
+    def __str__(self):
+        return f"{self.name} - {self.company.name}"

@@ -1,4 +1,4 @@
-# companies/views.py - COMPLETE AND CORRECT
+# companies/views.py - COMPLETE WITH SEPARATE UsersViewSet
 
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -19,7 +19,6 @@ from .email import CompanyEmailService
 import uuid
 from django.utils import timezone
 
-
 # ============================================
 # COMPANY VIEWSET - Registration
 # ============================================
@@ -27,11 +26,9 @@ from django.utils import timezone
 class CompanyViewSet(viewsets.ModelViewSet):
     """
     ViewSet for company operations
-    
     Endpoints:
     - POST /api/companies/register/
     """
-    
     queryset = Company.objects.all()
     serializer_class = CompanyRegisterSerializer
     permission_classes = [AllowAny]
@@ -40,41 +37,10 @@ class CompanyViewSet(viewsets.ModelViewSet):
     def register(self, request):
         """
         Register a new company
-        
-        Request:
-        POST /api/companies/register/
-        {
-            "name": "TechCorp India",
-            "email": "contact@techcorp.com",
-            "phone": "+91-9876543210",
-            "website": "https://techcorp.com",
-            "address": "123 Tech Street",
-            "city": "Bangalore",
-            "state": "Karnataka",
-            "country": "India",
-            "pincode": "560001",
-            "timezone": "Asia/Kolkata",
-            "currency": "INR"
-        }
-        
-        Response:
-        {
-            "success": true,
-            "data": {
-                "id": "550e8400-e29b-41d4-a716-446655440000",
-                "name": "TechCorp India",
-                "code": "TECHCORP_INDIA",
-                "email": "contact@techcorp.com",
-                "registration_status": "pending"
-            }
-        }
         """
-        
         serializer = CompanyRegisterSerializer(data=request.data)
-        
         if serializer.is_valid():
             company = serializer.save()
-            
             return Response({
                 'success': True,
                 'data': {
@@ -85,116 +51,103 @@ class CompanyViewSet(viewsets.ModelViewSet):
                     'registration_status': company.registration_status
                 }
             }, status=status.HTTP_201_CREATED)
-        
         return Response({
             'success': False,
             'errors': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
 
-
 # ============================================
-# AUTH VIEWSET - Login, Admin Creation
+# AUTH VIEWSET - Login, Password Change, Setup
 # ============================================
 
 class AuthViewSet(viewsets.ViewSet):
     """
     ViewSet for authentication operations
-    
     Endpoints:
-    - POST /api/auth/create-admin/
     - POST /api/auth/login/
-    - POST /api/auth/change-temp-password/
+    - POST /api/auth/change_temp_password/
+    - POST /api/auth/company_setup/
     """
-    
-    permission_classes = [AllowAny]
 
     @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def login(self, request):
         """
-        Login with company email and password - WITH DEBUG LOGGING
+        Login with company email and password
         """
         email = request.data.get('email')
         password = request.data.get('password')
-        
+
         print("\n" + "="*80)
         print("🔐 LOGIN ATTEMPT")
         print(f"Email: {email}")
-        print(f"Password received: {password}")
         print(f"Password length: {len(password) if password else 0}")
         print("="*80)
-        
+
         if not email or not password:
             print("❌ Missing email or password")
             return Response({
                 'success': False,
                 'error': 'Email and password required'
             }, status=status.HTTP_400_BAD_REQUEST)
-        
+
         # Try to find user by email
         print(f"\n🔍 Searching for user with email: {email}")
         try:
             user = User.objects.get(email=email)
             print(f"✓ User found: {user.username}")
-            print(f"  - ID: {user.id}")
-            print(f"  - Email: {user.email}")
-            print(f"  - Password stored: {user.password[:50]}...")
         except User.DoesNotExist:
             print(f"❌ User NOT found with email: {email}")
-            # Debug: Show all users in database
             all_users = User.objects.all()
             print(f"📋 Total users in DB: {all_users.count()}")
             for u in all_users:
-                print(f"   - {u.username} ({u.email})")
+                print(f" - {u.username} ({u.email})")
             return Response({
                 'success': False,
                 'error': 'Invalid email or password'
             }, status=status.HTTP_401_UNAUTHORIZED)
-        
-        # Check password - handle BOTH hashed and plain text
+
+        # Check password
         password_valid = False
         print(f"\n🔐 Checking password...")
-        
-        # Try hashed password first (proper way)
-        print(f"  Try 1: Hashed password check...")
+
+        # Try hashed password first
+        print(f" Try 1: Hashed password check...")
         if user.check_password(password):
             password_valid = True
-            print(f"  ✓ Password valid (HASHED)")
+            print(f" ✓ Password valid (HASHED)")
         else:
-            print(f"  ✗ Hashed check failed")
-        
+            print(f" ✗ Hashed check failed")
+
         # Try plain text password (for admin-created users)
         if not password_valid:
-            print(f"  Try 2: Plain text password check...")
+            print(f" Try 2: Plain text password check...")
             if user.password == password:
                 password_valid = True
-                print(f"  ✓ Password valid (PLAIN TEXT)")
+                print(f" ✓ Password valid (PLAIN TEXT)")
                 # Auto-hash it for future logins
                 user.set_password(password)
                 user.save()
-                print(f"  ✓ Password hashed and saved")
+                print(f" ✓ Password hashed and saved")
             else:
-                print(f"  ✗ Plain text check failed")
-                print(f"    Database password: {user.password}")
-                print(f"    Provided password: {password}")
-                print(f"    Match: {user.password == password}")
-        
+                print(f" ✗ Plain text check failed")
+
         if not password_valid:
-            print(f"❌ PASSWORD INVALID - All checks failed")
+            print(f"❌ PASSWORD INVALID")
             return Response({
                 'success': False,
                 'error': 'Invalid email or password'
             }, status=status.HTTP_401_UNAUTHORIZED)
-        
+
         print(f"✓ Password authentication successful")
-        
+
         # Generate JWT tokens
         print(f"\n🎫 Generating JWT tokens...")
         refresh = RefreshToken.for_user(user)
         access_token = str(refresh.access_token)
         refresh_token = str(refresh)
         print(f"✓ Tokens generated successfully")
-        
-        # Get CompanyAdmin to check if temp password and get additional info
+
+        # Get CompanyAdmin to check if temp password
         print(f"\n👤 Fetching CompanyAdmin info...")
         try:
             admin = CompanyAdmin.objects.get(user=user)
@@ -202,23 +155,14 @@ class AuthViewSet(viewsets.ViewSet):
             company_id = str(admin.company.id)
             company_name = admin.company.name
             full_name = admin.full_name
-            print(f"✓ CompanyAdmin found:")
-            print(f"  - Full Name: {full_name}")
-            print(f"  - Company: {company_name}")
-            print(f"  - Temp Password Set: {temp_password}")
+            company_setup_completed = admin.company_setup_completed
+            print(f"✓ CompanyAdmin found")
         except CompanyAdmin.DoesNotExist:
-            print(f"⚠️ CompanyAdmin NOT found for user: {user.username}")
-            print(f"   Creating default response without company info")
+            print(f"⚠️ CompanyAdmin NOT found for user")
             temp_password = False
             company_id = None
             company_name = "Unknown"
             full_name = user.first_name or user.username
-        
-        # Get company_setup_completed from CompanyAdmin
-        company_setup_completed = False
-        try:
-            company_setup_completed = admin.company_setup_completed
-        except:
             company_setup_completed = False
 
         response_data = {
@@ -227,75 +171,109 @@ class AuthViewSet(viewsets.ViewSet):
                 'access_token': access_token,
                 'refresh_token': refresh_token,
                 'user': {
-                    'id': user.id,
+                    'id': str(user.id),
                     'email': user.email,
                     'username': user.username,
                     'full_name': full_name,
                     'company_id': company_id,
                     'company_name': company_name,
                     'temp_password': temp_password,
-                    'company_setup_completed': company_setup_completed,  # ← ADD THIS
-                    'role': request.data.get('role', 'admin')
+                    'company_setup_completed': company_setup_completed,
+                    'role': 'company_admin'
                 }
             }
         }
 
-        
         print(f"\n✅ LOGIN SUCCESSFUL")
         print(f"User: {full_name} ({email})")
-        print(f"Company: {company_name}")
         print("="*80 + "\n")
-        
+
         return Response(response_data, status=status.HTTP_200_OK)
-        
-        return Response({
-            'success': False,
-            'errors': serializer.errors
-        }, status=status.HTTP_400_BAD_REQUEST)
-    
-    # ← ADD THE METHOD HERE (after login method)
+
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated], url_path='change_temp_password')
     def change_temp_password(self, request):
-        """Change temporary password to permanent password"""
-        from django.utils import timezone
-        
+        """
+        Change temporary password to permanent password
+        Path: /api/auth/change_temp_password/
+        """
+        print("\n" + "="*80)
+        print("🔐 CHANGE TEMP PASSWORD")
+        print(f"User: {request.user.email}")
+        print(f"User authenticated: {request.user.is_authenticated}")
+        print("="*80)
+
+        # Check if user is authenticated
+        if not request.user.is_authenticated:
+            print("❌ User NOT authenticated!")
+            return Response({
+                'success': False,
+                'error': 'Authentication required'
+            }, status=status.HTTP_401_UNAUTHORIZED)
+
         user = request.user
         old_password = request.data.get('old_password')
         new_password = request.data.get('new_password')
-        
+
+        print(f"Old password provided: {bool(old_password)}")
+        print(f"New password provided: {bool(new_password)}")
+
         # Validation
         if not old_password or not new_password:
+            print("❌ Missing passwords")
             return Response({
                 'success': False,
                 'error': 'Old and new passwords are required'
             }, status=status.HTTP_400_BAD_REQUEST)
-        
+
         if len(new_password) < 8:
+            print("❌ New password too short")
             return Response({
                 'success': False,
                 'error': 'New password must be at least 8 characters'
             }, status=status.HTTP_400_BAD_REQUEST)
-        
+
         # Verify old password
-        if not user.check_password(old_password):
+        print(f"\n🔐 Verifying old password...")
+        password_valid = False
+
+        # Try hashed password first
+        if user.check_password(old_password):
+            password_valid = True
+            print(f"✓ Old password valid (HASHED)")
+
+        # Try plain text password
+        elif user.password == old_password:
+            password_valid = True
+            print(f"✓ Old password valid (PLAIN TEXT)")
+
+        if not password_valid:
+            print(f"❌ Old password incorrect")
+            print(f"Stored: {user.password[:50]}...")
+            print(f"Provided: {old_password}")
             return Response({
                 'success': False,
                 'error': 'Current password is incorrect'
             }, status=status.HTTP_401_UNAUTHORIZED)
-        
+
         # Set new password
+        print(f"\n✓ Setting new password...")
         user.set_password(new_password)
         user.save()
-        
+        print(f"✓ New password saved")
+
         # Update CompanyAdmin
+        print(f"\n👤 Updating CompanyAdmin...")
         try:
             admin = CompanyAdmin.objects.get(user=user)
             admin.temp_password_set = False
             admin.password_changed_at = timezone.now()
             admin.save()
+            print(f"✓ CompanyAdmin updated - temp_password_set = False")
         except CompanyAdmin.DoesNotExist:
-            pass
-        
+            print(f"⚠️ CompanyAdmin NOT found")
+
+        print("="*80 + "\n")
+
         return Response({
             'success': True,
             'message': 'Password changed successfully'
@@ -310,20 +288,20 @@ class AuthViewSet(viewsets.ViewSet):
         try:
             user = request.user
             company_admin = CompanyAdmin.objects.get(user=user)
-            
+
             print("\n" + "="*80)
             print("🏢 COMPANY SETUP")
             print(f"Admin: {company_admin.full_name}")
             print(f"Company: {company_admin.company.name}")
             print("="*80)
-            
+
             # Check if already setup
             if company_admin.company_setup_completed:
                 return Response({
                     'success': False,
                     'error': 'Company setup already completed'
                 }, status=status.HTTP_400_BAD_REQUEST)
-            
+
             # Log received data
             print(f"\n📦 Received data: {request.data}")
 
@@ -339,17 +317,15 @@ class AuthViewSet(viewsets.ViewSet):
             validated_data = serializer.validated_data
             print(f"✓ Validated data: {validated_data}")
 
-            
             # Get company
             company = company_admin.company
-            
+
             # Update company info
             company.name = validated_data.get('company_name', company.name)
             company.website = validated_data.get('company_website', company.website or '')
             company.save()
-            
             print(f"✓ Company updated: {company.name}")
-            
+
             # Update company admin setup info
             company_admin.company_name = validated_data.get('company_name')
             company_admin.company_website = validated_data.get('company_website', '')
@@ -362,33 +338,32 @@ class AuthViewSet(viewsets.ViewSet):
             company_admin.casual_leave_days = validated_data.get('casual_leave_days', 12)
             company_admin.sick_leave_days = validated_data.get('sick_leave_days', 6)
             company_admin.personal_leave_days = validated_data.get('personal_leave_days', 2)
-            
+
             # Mark setup as completed
             company_admin.company_setup_completed = True
             company_admin.setup_completed_at = timezone.now()
             company_admin.save()
-            
+
             print(f"✓ Setup completed at: {company_admin.setup_completed_at}")
             print("="*80 + "\n")
-            
+
             return Response({
                 'success': True,
                 'message': 'Company setup completed successfully'
             }, status=status.HTTP_200_OK)
-            
+
         except CompanyAdmin.DoesNotExist:
             return Response({
                 'success': False,
                 'error': 'Company admin not found'
             }, status=status.HTTP_404_NOT_FOUND)
+
         except Exception as e:
             print(f"❌ Setup error: {str(e)}")
             return Response({
                 'success': False,
                 'error': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
 
 # ============================================
 # ADMIN DASHBOARD VIEWSET
@@ -397,21 +372,18 @@ class AuthViewSet(viewsets.ViewSet):
 class AdminDashboardViewSet(viewsets.ViewSet):
     """
     ViewSet for admin dashboard operations
-
     Endpoints:
     - GET /api/admin/profile/
     - PUT /api/admin/profile/
     - POST /api/admin/avatar/
     - GET /api/admin/notifications/
     - PUT /api/admin/notifications/
-    - POST /api/admin/change_password/
     - GET /api/admin/sessions/
-    - POST /api/admin/sessions/{id}/logout/
     - PUT /api/admin/appearance/
     """
     permission_classes = [IsAuthenticated]
 
-    # PROFILE - UPDATED VERSION
+    # PROFILE
     @action(detail=False, methods=['get', 'put'], url_path='profile')
     def profile(self, request):
         user = request.user
@@ -419,31 +391,24 @@ class AdminDashboardViewSet(viewsets.ViewSet):
             admin = CompanyAdmin.objects.get(user=user)
         except CompanyAdmin.DoesNotExist:
             return Response({'success': False, 'error': 'Admin profile not found'},
-                            status=status.HTTP_404_NOT_FOUND)
+                          status=status.HTTP_404_NOT_FOUND)
 
         if request.method == 'GET':
             return Response({
                 'success': True,
                 'data': {
-                    # Personal info
                     'full_name': admin.full_name,
                     'email': user.email,
                     'phone': admin.phone or '',
                     'avatar': admin.avatar.url if getattr(admin, 'avatar', None) else None,
-
-                    # Company info (from onboarding)
                     'company_name': admin.company_name or admin.company.name,
                     'company_website': admin.company_website or '',
                     'company_industry': admin.company_industry or '',
                     'total_employees': admin.total_employees,
-
-                    # Work settings
                     'timezone': admin.timezone,
                     'currency': admin.currency,
                     'working_hours_start': str(admin.working_hours_start),
                     'working_hours_end': str(admin.working_hours_end),
-
-                    # Leave structure
                     'casual_leave_days': admin.casual_leave_days,
                     'sick_leave_days': admin.sick_leave_days,
                     'personal_leave_days': admin.personal_leave_days,
@@ -453,41 +418,46 @@ class AdminDashboardViewSet(viewsets.ViewSet):
         # PUT - Update all fields
         data = request.data
 
-        # Personal info
         if 'full_name' in data:
             admin.full_name = data['full_name']
             user.first_name = data['full_name'].split()[0] if data['full_name'] else ''
             user.save()
+
         if 'phone' in data:
             admin.phone = data['phone']
 
-        # Company info
         if 'company_name' in data:
             admin.company_name = data['company_name']
             admin.company.name = data['company_name']
             admin.company.save()
+
         if 'company_website' in data:
             admin.company_website = data['company_website']
+
         if 'company_industry' in data:
             admin.company_industry = data['company_industry']
+
         if 'total_employees' in data:
             admin.total_employees = int(data['total_employees'] or 0)
 
-        # Work settings
         if 'timezone' in data:
             admin.timezone = data['timezone']
+
         if 'currency' in data:
             admin.currency = data['currency']
+
         if 'working_hours_start' in data:
             admin.working_hours_start = data['working_hours_start']
+
         if 'working_hours_end' in data:
             admin.working_hours_end = data['working_hours_end']
 
-        # Leave structure
         if 'casual_leave_days' in data:
             admin.casual_leave_days = int(data['casual_leave_days'] or 0)
+
         if 'sick_leave_days' in data:
             admin.sick_leave_days = int(data['sick_leave_days'] or 0)
+
         if 'personal_leave_days' in data:
             admin.personal_leave_days = int(data['personal_leave_days'] or 0)
 
@@ -498,7 +468,6 @@ class AdminDashboardViewSet(viewsets.ViewSet):
             'message': 'Profile updated successfully'
         })
 
-
     # AVATAR
     @action(detail=False, methods=['post'], url_path='avatar')
     def avatar(self, request):
@@ -507,16 +476,16 @@ class AdminDashboardViewSet(viewsets.ViewSet):
             admin = CompanyAdmin.objects.get(user=user)
         except CompanyAdmin.DoesNotExist:
             return Response({'success': False, 'error': 'Admin profile not found'},
-                            status=status.HTTP_404_NOT_FOUND)
+                          status=status.HTTP_404_NOT_FOUND)
 
         avatar_file = request.FILES.get('avatar')
         if not avatar_file:
             return Response({'success': False, 'error': 'No avatar file provided'},
-                            status=status.HTTP_400_BAD_REQUEST)
+                          status=status.HTTP_400_BAD_REQUEST)
 
         if avatar_file.size > 5 * 1024 * 1024:
             return Response({'success': False, 'error': 'File size exceeds 5MB limit'},
-                            status=status.HTTP_400_BAD_REQUEST)
+                          status=status.HTTP_400_BAD_REQUEST)
 
         admin.avatar = avatar_file
         admin.save()
@@ -530,7 +499,6 @@ class AdminDashboardViewSet(viewsets.ViewSet):
     # NOTIFICATIONS
     @action(detail=False, methods=['get', 'put'], url_path='notifications')
     def notifications(self, request):
-        # For now, just echo settings; can be stored in DB later
         if request.method == 'GET':
             return Response({
                 'success': True,
@@ -543,6 +511,7 @@ class AdminDashboardViewSet(viewsets.ViewSet):
                     'payroll_updates': True,
                 }
             })
+
         data = {
             'email_notifications': request.data.get('email_notifications', True),
             'push_notifications': request.data.get('push_notifications', True),
@@ -551,70 +520,28 @@ class AdminDashboardViewSet(viewsets.ViewSet):
             'task_assignments': request.data.get('task_assignments', True),
             'payroll_updates': request.data.get('payroll_updates', True),
         }
+
         return Response({
             'success': True,
             'message': 'Notification settings updated successfully',
             'data': data
         })
 
-    # CHANGE PASSWORD (for Settings.tsx)
-    @action(detail=False, methods=['post'], url_path='change_password')
-    def change_password(self, request):
-        user = request.user
-        old_password = request.data.get('old_password')
-        new_password = request.data.get('new_password')
-        confirm_password = request.data.get('confirm_password')
-
-        if not old_password or not new_password or not confirm_password:
-            return Response({'success': False, 'error': 'All fields are required'},
-                            status=status.HTTP_400_BAD_REQUEST)
-        if new_password != confirm_password:
-            return Response({'success': False, 'error': 'New passwords do not match'},
-                            status=status.HTTP_400_BAD_REQUEST)
-        if len(new_password) < 8:
-            return Response({'success': False, 'error': 'Password must be at least 8 characters'},
-                            status=status.HTTP_400_BAD_REQUEST)
-        if not user.check_password(old_password):
-            return Response({'success': False, 'error': 'Current password is incorrect'},
-                            status=status.HTTP_401_UNAUTHORIZED)
-
-        user.set_password(new_password)
-        user.save()
-
-        try:
-            admin = CompanyAdmin.objects.get(user=user)
-            admin.temp_password_set = False
-            admin.password_changed_at = timezone.now()
-            admin.save()
-        except CompanyAdmin.DoesNotExist:
-            pass
-
-        return Response({'success': True, 'message': 'Password changed successfully'})
-
-    # SESSIONS (mock)
+    # SESSIONS
     @action(detail=False, methods=['get'], url_path='sessions')
     def sessions(self, request):
         return Response({
             'success': True,
-            'data': [
-                {
-                    'id': '1',
-                    'browser': 'Chrome',
-                    'device': 'Windows',
-                    'location': 'New York, US',
-                    'ip_address': '192.168.1.1',
-                    'last_active': 'Just now',
-                    'is_current': True,
-                }
-            ]
+            'data': [{
+                'id': '1',
+                'browser': 'Chrome',
+                'device': 'Windows',
+                'location': 'New York, US',
+                'ip_address': '192.168.1.1',
+                'last_active': 'Just now',
+                'is_current': True,
+            }]
         })
-
-    @action(detail=False, methods=['post'], url_path='sessions/(?P<session_id>[^/.]+)/logout')
-    def logout_session(self, request, session_id=None):
-        if session_id in ('1', 'current'):
-            return Response({'success': False, 'error': 'Cannot logout current session'},
-                            status=status.HTTP_400_BAD_REQUEST)
-        return Response({'success': True, 'message': 'Session logged out successfully'})
 
     # APPEARANCE
     @action(detail=False, methods=['put'], url_path='appearance')
@@ -624,7 +551,7 @@ class AdminDashboardViewSet(viewsets.ViewSet):
             admin = CompanyAdmin.objects.get(user=user)
         except CompanyAdmin.DoesNotExist:
             return Response({'success': False, 'error': 'Admin profile not found'},
-                            status=status.HTTP_404_NOT_FOUND)
+                          status=status.HTTP_404_NOT_FOUND)
 
         theme = request.data.get('theme', 'system')
         language = request.data.get('language', 'en')
@@ -643,4 +570,191 @@ class AdminDashboardViewSet(viewsets.ViewSet):
             }
         })
 
+# ============================================
+# USERS VIEWSET - HR Management
+# ============================================
+
+class UsersViewSet(viewsets.ViewSet):
+    """
+    ViewSet for user operations (HR managers, employees)
     
+    Endpoints:
+    - POST /api/users/add_hr/
+    - GET /api/users/company_hrs/
+    """
+    
+    permission_classes = [IsAuthenticated]
+    
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated], url_path='add_hr')
+    def add_hr(self, request):
+        """
+        Add HR Manager to company
+        
+        Path: /api/users/add_hr/
+        Method: POST
+        Permissions: IsAuthenticated
+        
+        Request body:
+        {
+            "name": "Zeel Patel",
+            "email": "zeel@company.com"
+        }
+        
+        Response:
+        {
+            "success": true,
+            "message": "HR Manager added successfully",
+            "data": {
+                "id": "123",
+                "name": "Zeel Patel",
+                "email": "zeel@company.com",
+                "role": "hr_manager",
+                "status": "invited"
+            }
+        }
+        """
+        
+        try:
+            # Get company admin
+            company_admin = CompanyAdmin.objects.get(user=request.user)
+            company = company_admin.company
+            
+            print("\n" + "="*80)
+            print("👤 ADD HR MANAGER")
+            print(f"Company: {company.name}")
+            print(f"Admin: {company_admin.full_name}")
+            print("="*80)
+            
+            # Get data from request
+            name = request.data.get('name', '').strip()
+            email = request.data.get('email', '').strip().lower()
+            
+            print(f"\n📦 Request Data:")
+            print(f"  Name: {name}")
+            print(f"  Email: {email}")
+            
+            # Validation
+            if not name or not email:
+                print(f"❌ Missing name or email")
+                return Response({
+                    'success': False,
+                    'error': 'Name and email are required'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            if len(name) < 2:
+                print(f"❌ Name too short")
+                return Response({
+                    'success': False,
+                    'error': 'Name must be at least 2 characters'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Validate email format
+            import re
+            email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            if not re.match(email_pattern, email):
+                print(f"❌ Invalid email format")
+                return Response({
+                    'success': False,
+                    'error': 'Invalid email format'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Check if email already exists in system
+            print(f"\n🔍 Checking if email already exists...")
+            
+            if User.objects.filter(email=email).exists():
+                print(f"❌ Email already exists in system")
+                return Response({
+                    'success': False,
+                    'error': 'This email already exists in the system'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Generate temp password
+            import random
+            import string
+            temp_password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
+            
+            # Create user
+            print(f"\n👤 Creating user...")
+            user = User.objects.create_user(
+                username=email.split('@')[0] + '_' + str(uuid.uuid4())[:8],
+                email=email,
+                password=temp_password,
+                first_name=name.split()[0] if name else '',
+                last_name=' '.join(name.split()[1:]) if len(name.split()) > 1 else ''
+            )
+            
+            print(f"  ✓ New user created: {user.username}")
+            print(f"  ✓ Temp password: {temp_password}")
+            
+            # Send invitation email (optional)
+            print(f"\n📧 Sending invitation email...")
+            try:
+                from .email import CompanyEmailService
+                email_service = CompanyEmailService()
+                email_service.send_hr_invitation(
+                    hr_email=email,
+                    hr_name=name,
+                    company_name=company.name,
+                    admin_name=company_admin.full_name,
+                    temp_password=temp_password
+                )
+                print(f"  ✓ Invitation email sent")
+            except Exception as e:
+                print(f"  ⚠️ Email sending failed: {str(e)}")
+            
+            print(f"\n✅ HR MANAGER ADDED SUCCESSFULLY")
+            print("="*80 + "\n")
+            
+            return Response({
+                'success': True,
+                'message': 'HR Manager added successfully',
+                'data': {
+                    'id': str(user.id),
+                    'name': name,
+                    'email': email,
+                    'role': 'hr_manager',
+                    'status': 'invited'
+                }
+            }, status=status.HTTP_201_CREATED)
+            
+        except CompanyAdmin.DoesNotExist:
+            print(f"❌ Company admin not found")
+            return Response({
+                'success': False,
+                'error': 'Company admin not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+            
+        except Exception as e:
+            print(f"❌ Error: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return Response({
+                'success': False,
+                'error': f'Failed to add HR Manager: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated], url_path='company_hrs')
+    def company_hrs(self, request):
+        """
+        List all HR managers for the company
+        
+        Path: /api/users/company_hrs/
+        Method: GET
+        """
+        try:
+            company_admin = CompanyAdmin.objects.get(user=request.user)
+            company = company_admin.company
+            
+            # Get all users associated with this company
+            # For now, return empty list
+            
+            return Response({
+                'success': True,
+                'data': []
+            })
+            
+        except CompanyAdmin.DoesNotExist:
+            return Response({
+                'success': False,
+                'error': 'Company admin not found'
+            }, status=status.HTTP_404_NOT_FOUND)

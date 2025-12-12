@@ -1,4 +1,4 @@
-# companies/email.py
+# companies/email.py - UPDATED WITH HR INVITATION
 
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
@@ -24,132 +24,24 @@ class CompanyEmailService:
         Returns:
             bool: True if email sent, False if failed
         """
-        
         try:
             subject = f'WorkOS Admin Account Created - {company_name}'
             
             # Email body
             html_message = f"""
-            <html>
-                <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-                    <div style="max-width: 600px; margin: 0 auto; background-color: #f9f9f9; padding: 20px; border-radius: 8px;">
-                        
-                        <!-- Header -->
-                        <div style="background-color: #2196F3; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
-                            <h1 style="margin: 0;">Welcome to WorkOS</h1>
-                        </div>
-                        
-                        <!-- Content -->
-                        <div style="background-color: white; padding: 30px; border-radius: 0 0 8px 8px;">
-                            <p>Hello,</p>
-                            
-                            <p>Your admin account for <strong>{company_name}</strong> has been created!</p>
-                            
-                            <h3 style="color: #2196F3; margin-top: 30px;">Login Credentials</h3>
-                            
-                            <div style="background-color: #f0f0f0; padding: 15px; border-left: 4px solid #2196F3; margin: 20px 0;">
-                                <p><strong>Email:</strong> <code style="background: #e0e0e0; padding: 5px 10px; border-radius: 4px;">{admin_email}</code></p>
-                                <p><strong>Temporary Password:</strong> <code style="background: #e0e0e0; padding: 5px 10px; border-radius: 4px;">{temp_password}</code></p>
-                            </div>
-                            
-                            <p style="color: #ff6b6b; font-weight: bold;">⚠️ Important:</p>
-                            <ul>
-                                <li>This temporary password is valid for <strong>72 hours</strong></li>
-                                <li>You must change it on first login</li>
-                                <li>Keep this email safe and secure</li>
-                                <li>Never share your password</li>
-                            </ul>
-                            
-                            <h3 style="color: #2196F3; margin-top: 30px;">Next Steps</h3>
-                            <ol>
-                                <li>Go to: <strong>https://workos.app/login</strong></li>
-                                <li>Enter email: <strong>{admin_email}</strong></li>
-                                <li>Enter password: <strong>{temp_password}</strong></li>
-                                <li>Click "Login"</li>
-                                <li>Create your new permanent password</li>
-                            </ol>
-                            
-                            <div style="background-color: #f0f0f0; padding: 15px; border-radius: 4px; margin: 20px 0; text-align: center;">
-                                <a href="https://workos.app/login" style="background-color: #2196F3; color: white; padding: 12px 30px; text-decoration: none; border-radius: 4px; display: inline-block;">Login to WorkOS</a>
-                            </div>
-                            
-                            <p style="color: #666; font-size: 13px; margin-top: 30px;">
-                                If you didn't request this account or have any questions, please contact our support team.
-                            </p>
-                        </div>
-                        
-                        <!-- Footer -->
-                        <div style="background-color: #f9f9f9; padding: 15px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #ddd; margin-top: 20px; border-radius: 0 0 8px 8px;">
-                            <p>© 2024 WorkOS. All rights reserved.</p>
-                            <p>This is an automated email. Please do not reply.</p>
-                        </div>
-                    </div>
-                </body>
-            </html>
-            """
+            <h2>Hello,</h2>
+            <p>Your admin account for <strong>{company_name}</strong> has been created!</p>
             
-            # Plain text version for email clients that don't support HTML
-            plain_message = f"""
-Welcome to WorkOS!
-
-Your admin account for {company_name} has been created.
-
-LOGIN CREDENTIALS:
-Email: {admin_email}
-Temporary Password: {temp_password}
-
-IMPORTANT:
-- This temporary password is valid for 72 hours
-- You must change it on first login
-- Keep this email safe and secure
-
-NEXT STEPS:
-1. Go to: https://workos.app/login
-2. Enter email: {admin_email}
-3. Enter password: {temp_password}
-4. Click "Login"
-5. Create your new permanent password
-
-If you didn't request this account, please contact support.
-
-© 2024 WorkOS
-            """
+            <h3>Login Credentials:</h3>
+            <p><strong>Email:</strong> <code>{admin_email}</code></p>
+            <p><strong>Temporary Password:</strong> <code>{temp_password}</code></p>
             
-            # Send email
-            send_mail(
-                subject=subject,
-                message=plain_message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[personal_email],
-                html_message=html_message,
-                fail_silently=False,
-            )
+            <p style="color: red; font-weight: bold;">⚠️ Important:</p>
+            <p>If you didn't request this account or have any questions, please contact our support team.</p>
             
-            print(f"✅ Email sent successfully to {personal_email}")
-            return True
-            
-        except Exception as e:
-            print(f"❌ Error sending email: {str(e)}")
-            return False
-
-    @staticmethod
-    def send_password_reset_email(personal_email, company_name, reset_link):
-        """
-        Send password reset email
-        (You can use this later)
-        """
-        try:
-            subject = f'Reset Your WorkOS Password - {company_name}'
-            
-            html_message = f"""
-            <html>
-                <body>
-                    <h2>Reset Your Password</h2>
-                    <p>Click the link below to reset your WorkOS password:</p>
-                    <a href="{reset_link}">Reset Password</a>
-                    <p>This link expires in 1 hour.</p>
-                </body>
-            </html>
+            <hr>
+            <p>© 2024 WorkOS. All rights reserved.</p>
+            <p><em>This is an automated email. Please do not reply.</em></p>
             """
             
             send_mail(
@@ -160,33 +52,79 @@ If you didn't request this account, please contact support.
                 html_message=html_message,
                 fail_silently=False,
             )
-            
             return True
-            
         except Exception as e:
-            print(f"❌ Error sending password reset email: {str(e)}")
+            print(f"❌ Error sending admin credentials email: {str(e)}")
+            return False
+
+    @staticmethod
+    def send_hr_invitation(personal_email, company_name, hr_email, temp_password):
+        """
+        Send HR invitation email with login credentials
+        
+        Args:
+            personal_email: HR's personal email
+            company_name: Company name
+            hr_email: HR company email
+            temp_password: Temporary password
+        
+        Returns:
+            bool: True if email sent, False if failed
+        """
+        try:
+            subject = f'WorkOS HR Account Created - {company_name}'
+            
+            html_message = f"""
+            <h2>Hello,</h2>
+            <p>Your HR account for <strong>{company_name}</strong> has been created!</p>
+            
+            <h3>Login Credentials:</h3>
+            <p><strong>Email:</strong> <code>{hr_email}</code></p>
+            <p><strong>Temporary Password:</strong> <code>{temp_password}</code></p>
+            
+            <h3>What's Next:</h3>
+            <ol>
+                <li>Log in with the credentials above</li>
+                <li>Change your password (required on first login)</li>
+                <li>Complete your profile</li>
+                <li>Start managing your company's HR operations</li>
+            </ol>
+            
+            <p style="color: red; font-weight: bold;">⚠️ Important:</p>
+            <p>If you didn't request this account or have any questions, please contact our support team.</p>
+            
+            <hr>
+            <p>© 2024 WorkOS. All rights reserved.</p>
+            <p><em>This is an automated email. Please do not reply.</em></p>
+            """
+            
+            send_mail(
+                subject=subject,
+                message='Your HR account has been created',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[personal_email],
+                html_message=html_message,
+                fail_silently=False,
+            )
+            print(f"✓ HR invitation email sent to {personal_email}")
+            return True
+        except Exception as e:
+            print(f"❌ Error sending HR invitation email: {str(e)}")
             return False
 
     @staticmethod
     def send_employee_invitation(personal_email, company_name, invite_link):
         """
-        Send employee invitation email
-        (You can use this later)
+        Send employee invitation email (You can use this later)
         """
         try:
             subject = f'You are invited to {company_name} on WorkOS'
-            
             html_message = f"""
-            <html>
-                <body>
-                    <h2>Welcome to {company_name}!</h2>
-                    <p>You have been invited to join {company_name} on WorkOS.</p>
-                    <a href="{invite_link}">Accept Invitation</a>
-                    <p>This invitation expires in 7 days.</p>
-                </body>
-            </html>
+            <h2>You have been invited!</h2>
+            <p>You have been invited to join <strong>{company_name}</strong> on WorkOS.</p>
+            <p><a href="{invite_link}">Accept Invitation</a></p>
+            <p>This invitation expires in 7 days.</p>
             """
-            
             send_mail(
                 subject=subject,
                 message='You are invited to join the company',
@@ -195,9 +133,109 @@ If you didn't request this account, please contact support.
                 html_message=html_message,
                 fail_silently=False,
             )
-            
             return True
-            
         except Exception as e:
             print(f"❌ Error sending invitation email: {str(e)}")
             return False
+        
+        @staticmethod
+        def send_manager_invitation(personal_email, company_name, manager_email, temp_password):
+            """
+            Send manager invitation email with login credentials
+            
+            Args:
+                personal_email: Manager's personal email (where to send)
+                company_name: Company name
+                manager_email: Manager's company email (for login)
+                temp_password: Temporary password for first login
+            
+            Returns:
+                bool: True if email sent, False if failed
+            """
+            
+            try:
+                subject = f'WorkOS Manager Account Created - {company_name}'
+                
+                # Create HTML email
+                html_message = f"""
+                <html>
+                <body style="font-family: Arial, sans-serif; color: #333;">
+                    <div style="max-width: 500px; margin: 0 auto; padding: 20px;">
+                        <h2 style="color: #0066cc;">Welcome to {company_name}!</h2>
+                        
+                        <p>Your manager account has been created on WorkOS.</p>
+                        
+                        <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                            <p><strong>Email:</strong></p>
+                            <p style="font-family: monospace; font-size: 16px; background: white; padding: 10px; border-radius: 3px;">
+                                {manager_email}
+                            </p>
+                            
+                            <p style="margin-top: 15px;"><strong>Temporary Password:</strong></p>
+                            <p style="font-family: monospace; font-size: 16px; background: white; padding: 10px; border-radius: 3px;">
+                                {temp_password}
+                            </p>
+                        </div>
+                        
+                        <p><strong>Next Steps:</strong></p>
+                        <ol>
+                            <li>Visit: <a href="https://yourapp.com/login">https://yourapp.com/login</a></li>
+                            <li>Enter your email and temporary password</li>
+                            <li>Change your password to something secure</li>
+                            <li>Complete your profile</li>
+                            <li>Start using WorkOS!</li>
+                        </ol>
+                        
+                        <div style="background-color: #fff3cd; padding: 10px; border-left: 4px solid #ffc107; margin: 20px 0;">
+                            <p><strong>⚠️ Important:</strong></p>
+                            <p>If you didn't request this account or have any questions, please contact your administrator.</p>
+                        </div>
+                        
+                        <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+                        
+                        <p style="font-size: 12px; color: #666;">
+                            © 2024 WorkOS. All rights reserved.
+                            <br>
+                            This is an automated email. Please do not reply to this message.
+                        </p>
+                    </div>
+                </body>
+                </html>
+                """
+                
+                plain_text = f"""
+                Welcome to {company_name}!
+                
+                Your manager account has been created on WorkOS.
+                
+                Email: {manager_email}
+                Temporary Password: {temp_password}
+                
+                Next Steps:
+                1. Visit: https://yourapp.com/login
+                2. Enter your email and temporary password
+                3. Change your password to something secure
+                4. Complete your profile
+                5. Start using WorkOS!
+                
+                If you didn't request this account or have any questions, 
+                please contact your administrator.
+                
+                © 2024 WorkOS
+                """
+                
+                send_mail(
+                    subject=subject,
+                    message=plain_text,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[personal_email],
+                    html_message=html_message,
+                    fail_silently=False,
+                )
+                
+                print(f"✓ Manager invitation email sent to {personal_email}")
+                return True
+            
+            except Exception as e:
+                print(f"❌ Error sending manager invitation email: {str(e)}")
+                return False

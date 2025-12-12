@@ -186,7 +186,7 @@ class CompanySetupSerializer(serializers.Serializer):
     personal_leave_days = serializers.IntegerField(required=False, default=2, min_value=0)
     managers = serializers.ListField(
         child=serializers.DictField(
-            child=serializers.CharField(),
+            child=serializers.CharField(allow_blank=True, required=False),
             required=False
         ),
         required=False,
@@ -197,6 +197,39 @@ class CompanySetupSerializer(serializers.Serializer):
         if not value.strip():
             raise serializers.ValidationError("Company name cannot be empty")
         return value
+    
+    # ✅ NEW: Filter and validate managers
+    def validate_managers(self, value):
+        """
+        Filter out empty managers and validate remaining ones
+        """
+        if not value:
+            return []
+        
+        # Filter out managers with empty name AND email
+        valid_managers = []
+        for manager in value:
+            name = manager.get('name', '').strip() if isinstance(manager.get('name'), str) else ''
+            email = manager.get('email', '').strip() if isinstance(manager.get('email'), str) else ''
+            
+            # Only add if BOTH name and email are present
+            if name and email:
+                valid_managers.append({
+                    'name': name,
+                    'email': email
+                })
+        
+        return valid_managers
+    
+    # ✅ NEW: Overall validation
+    def validate(self, data):
+        """
+        Overall validation - ensure company_name is provided
+        """
+        if not data.get('company_name', '').strip():
+            raise serializers.ValidationError({'company_name': 'Company name is required'})
+        
+        return data
 
 # ==========================================
 # 7. PROFILE & NOTIFICATION SERIALIZERS

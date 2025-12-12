@@ -72,7 +72,8 @@ const Login: React.FC = () => {
       console.log('✅ Login successful');
 
       // Store all data in localStorage
-      localStorage.setItem('access_token', data.data.access_token);
+      localStorage.setItem('access_token', data.data.access_token);  // Fixed!
+      localStorage.setItem('token', data.data.access_token);         // Also add!
       localStorage.setItem('refresh_token', data.data.refresh_token);
       localStorage.setItem('user', JSON.stringify(data.data.user));
 

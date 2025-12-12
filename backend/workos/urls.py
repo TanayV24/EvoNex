@@ -27,6 +27,7 @@ urlpatterns = [
     # ⭐ Chat REST API routes
     path('api/chat/', include('chat.urls')),
     path('api/users/', include('users.urls')),
+    path('', include(router.urls)),
 ]
 
 if settings.DEBUG:

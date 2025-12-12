@@ -9,12 +9,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { 
   Building2, Users, UserCheck, CheckCircle, Loader2, 
-  Eye, EyeOff, Lock, AlertCircle 
+  Eye, EyeOff, Lock, AlertCircle, Plus, Trash2
 } from 'lucide-react';
+import { authRest, usersRest } from '@/services/api';
+
+
 
 // ============================================
 // TYPE DEFINITIONS
 // ============================================
+
+
 
 interface CompanySetupData {
   company_name: string;
@@ -31,20 +36,42 @@ interface CompanySetupData {
   managers: Array<{ name: string; email: string }>;
 }
 
+
+
 interface ChangePasswordForm {
   currentPassword: string;
   newPassword: string;
   confirmPassword: string;
 }
 
+
+
+interface HRForm {
+  name: string;
+  email: string;
+}
+
+
+
 // ============================================
 // MAIN COMPONENT
 // ============================================
+
+
 
 const Onboarding: React.FC = () => {
   const navigate = useNavigate();
   const { user, updateUserData, accessToken } = useAuth();
   
+  // Only company_admin should access this page
+  React.useEffect(() => {
+    if (user?.role !== 'company_admin') {
+      window.location.href = '/dashboard';
+    }
+  }, [user]);
+
+
+
   // ============================================
   // STATE MANAGEMENT
   // ============================================
@@ -80,7 +107,15 @@ const Onboarding: React.FC = () => {
     managers: [{ name: '', email: '' }],
   });
   
+  // HR Form state for adding HR manager
+  const [hrForm, setHrForm] = useState<HRForm>({
+    name: '',
+    email: '',
+  });
+  
   // Loading states
+  const [addingManager, setAddingManager] = useState(false);
+  const [completingSetup, setCompletingSetup] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
   // ============================================
@@ -167,23 +202,10 @@ const Onboarding: React.FC = () => {
     
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:8000/api/auth/change_temp_password/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          old_password: passwordForm.currentPassword,
-          new_password: passwordForm.newPassword,
-        }),
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to change password');
-      }
+      const response = await authRest.changePassword(
+        passwordForm.currentPassword,
+        passwordForm.newPassword
+      );
       
       toast({
         title: 'Success!',
@@ -250,6 +272,58 @@ const Onboarding: React.FC = () => {
     }));
   };
   
+  // Handle HR form input
+  const handleHRInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setHrForm({
+      ...hrForm,
+      [name]: value,
+    });
+  };
+
+  // Handle Add HR function with API call
+  const handleAddHR = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!hrForm.name || !hrForm.email) {
+      toast({
+        title: 'Error',
+        description: 'Please fill in all fields',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setAddingManager(true);
+
+    try {
+      const response = await authRest.addHR(hrForm.name, hrForm.email);
+      
+      toast({
+        title: 'Success!',
+        description: `${hrForm.name} has been added successfully`,
+      });
+
+      // Add to managers list locally
+      setSetupForm(prev => ({
+        ...prev,
+        managers: [...prev.managers, { name: hrForm.name, email: hrForm.email }]
+      }));
+
+      // Reset form
+      setHrForm({ name: '', email: '' });
+
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to add HR',
+        variant: 'destructive',
+      });
+    } finally {
+      setAddingManager(false);
+    }
+  };
+  
   const handleCompanySetup = async () => {
     if (!setupForm.company_name.trim()) {
       toast({
@@ -260,7 +334,7 @@ const Onboarding: React.FC = () => {
       return;
     }
     
-    setIsLoading(true);
+    setCompletingSetup(true);
     try {
       // Fix URL format - add https:// if not present
       let websiteUrl = setupForm.company_website.trim();
@@ -270,26 +344,22 @@ const Onboarding: React.FC = () => {
 
       // Create payload with fixed URL
       const payload = {
-        ...setupForm,
+        company_name: setupForm.company_name,
         company_website: websiteUrl,
+        company_industry: setupForm.company_industry,
+        timezone: setupForm.timezone,
+        currency: setupForm.currency,
+        total_employees: setupForm.total_employees,
+        working_hours_start: setupForm.working_hours_start,
+        working_hours_end: setupForm.working_hours_end,
+        casual_leave_days: setupForm.casual_leave_days,
+        sick_leave_days: setupForm.sick_leave_days,
+        personal_leave_days: setupForm.personal_leave_days,
       };
 
       console.log('📤 Sending company setup:', payload);
 
-      const response = await fetch('http://localhost:8000/api/auth/company_setup/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify(payload),
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to save company setup');
-      }
+      const response = await authRest.companySetup(payload);
       
       toast({
         title: 'Success!',
@@ -309,7 +379,7 @@ const Onboarding: React.FC = () => {
         variant: 'destructive',
       });
     } finally {
-      setIsLoading(false);
+      setCompletingSetup(false);
     }
   };
   
@@ -667,46 +737,90 @@ const Onboarding: React.FC = () => {
               
               {/* TAB 3: Managers */}
               <TabsContent value="managers" className="space-y-6">
-                <p className="text-sm text-gray-600">Add manager names and emails (optional, can add later)</p>
+                <p className="text-sm text-gray-600">Add HR manager names and emails (optional, can add later)</p>
                 
-                {setupForm.managers.map((manager, index) => (
-                  <div key={index} className="space-y-3 p-4 border rounded-lg">
-                    <div className="flex items-center justify-between mb-3">
-                      <h5 className="font-medium">Manager {index + 1}</h5>
-                      {index > 0 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeManager(index)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          Remove
-                        </Button>
-                      )}
+                {/* HR Add Form with API Integration */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-5 space-y-4">
+                  <h4 className="font-semibold text-blue-900 flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add HR Manager
+                  </h4>
+
+                  <form onSubmit={handleAddHR} className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="hr_name" className="text-sm">HR Name</Label>
+                        <Input
+                          id="hr_name"
+                          type="text"
+                          name="name"
+                          placeholder="e.g. Priya Sharma"
+                          value={hrForm.name}
+                          onChange={handleHRInputChange}
+                          disabled={addingManager}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="hr_email" className="text-sm">HR Email</Label>
+                        <Input
+                          id="hr_email"
+                          type="email"
+                          name="email"
+                          placeholder="e.g. priya@pharmacy.com"
+                          value={hrForm.email}
+                          onChange={handleHRInputChange}
+                          disabled={addingManager}
+                        />
+                      </div>
                     </div>
-                    
-                    <Input
-                      placeholder="Manager Name"
-                      value={manager.name}
-                      onChange={(e) => handleManagerChange(index, 'name', e.target.value)}
-                    />
-                    
-                    <Input
-                      placeholder="Manager Email"
-                      type="email"
-                      value={manager.email}
-                      onChange={(e) => handleManagerChange(index, 'email', e.target.value)}
-                    />
+
+                    <Button
+                      type="submit"
+                      disabled={addingManager || !hrForm.name || !hrForm.email}
+                      className="w-full"
+                      variant="default"
+                    >
+                      {addingManager ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Adding Manager...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add Manager
+                        </>
+                      )}
+                    </Button>
+                  </form>
+                </div>
+
+                {/* Existing Managers Section */}
+                {setupForm.managers.filter(m => m.name).length > 0 && (
+                  <div className="border rounded-lg p-5 space-y-4">
+                    <h4 className="font-semibold">Added Managers ({setupForm.managers.filter(m => m.name).length})</h4>
+                    <div className="space-y-2">
+                      {setupForm.managers.map((manager, index) => (
+                        manager.name && (
+                          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded border">
+                            <div>
+                              <p className="font-medium">{manager.name}</p>
+                              <p className="text-sm text-gray-600">{manager.email}</p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeManager(index)}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )
+                      ))}
+                    </div>
                   </div>
-                ))}
-                
-                <Button 
-                  variant="outline"
-                  onClick={addManager}
-                  className="w-full"
-                >
-                  + Add Another Manager
-                </Button>
+                )}
                 
                 <div className="flex gap-3">
                   <Button 
@@ -784,10 +898,10 @@ const Onboarding: React.FC = () => {
                   </Button>
                   <Button 
                     onClick={handleCompanySetup}
-                    disabled={isLoading}
+                    disabled={completingSetup}
                     className="flex-1"
                   >
-                    {isLoading ? (
+                    {completingSetup ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Completing Setup...

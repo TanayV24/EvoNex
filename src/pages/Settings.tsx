@@ -501,7 +501,7 @@ const [profileData, setProfileData] = useState<ProfileSettings>({
 
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:8000/api/auth/change_password/', {
+      const response = await fetch('http://localhost:8000/api/auth/change_temp_password/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

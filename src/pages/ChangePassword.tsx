@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Lock, Loader2, AlertCircle } from 'lucide-react';
+import { authRest, usersRest } from '@/services/api';
 
 interface ChangePasswordForm {
   currentPassword: string;
@@ -15,40 +16,45 @@ interface ChangePasswordForm {
 }
 
 const ChangePassword: React.FC = () => {
-  const { user, accessToken } = useAuth();
+  const { user, updateUserData } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState<ChangePasswordForm>({
+  const [form, setForm] = useState({
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
+
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // USE useEffect INSTEAD OF DIRECT REDIRECT
+  // Check if password already changed - redirect if needed
   useEffect(() => {
-    // Check localStorage for user data
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       const userData = JSON.parse(storedUser);
-      // Only redirect if temp_password is explicitly false
+      
+      // If password already changed, redirect to next step
       if (userData.temp_password === false) {
-        console.log('✓ Not a temp password - redirecting to dashboard');
-        navigate('/admin/dashboard', { replace: true });
+        if (userData.role === 'company_admin') {
+          // Admin goes to company setup (or dashboard if already done)
+          if (userData.company_setup_completed === false) {
+            navigate('/onboarding', { replace: true });
+          } else {
+            navigate('/admin/dashboard', { replace: true });
+          }
+        } else {
+          // Manager/HR/Employee goes to profile completion
+          if (userData.profile_completed === false) {
+            navigate('/onboarding/profile', { replace: true });
+          } else {
+            navigate('/dashboard', { replace: true });
+          }
+        }
       }
     }
   }, [navigate]);
-
-  // If user doesn't exist yet, show loading
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Loading...</p>
-      </div>
-    );
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,60 +87,82 @@ const ChangePassword: React.FC = () => {
       return;
     }
 
+    if (isLoading) return; // Prevent double submission
+
     setIsLoading(true);
 
     try {
-      const response = await fetch(
-        'http://localhost:8000/api/auth/change_temp_password/',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
-            old_password: form.currentPassword,
-            new_password: form.newPassword,
-          }),
-        }
-      );
+      console.log('🔐 Changing password for role:', user?.role);
 
-      const data = await response.json();
+      let response;
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to change password');
+      // Call appropriate endpoint based on role
+      if (user?.role === 'company_admin') {
+        response = await authRest.changePassword(
+          form.currentPassword,
+          form.newPassword
+        );
+      } else {
+        // Manager/HR/Employee
+        response = await usersRest.changePassword(
+          form.currentPassword,
+          form.newPassword
+        );
       }
+
+      console.log('✓ Password change response:', response);
 
       toast({
         title: 'Success!',
         description: 'Your password has been changed successfully',
       });
 
-      // Update user in localStorage to remove temp_password flag
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        const userData = JSON.parse(storedUser);
-        userData.temp_password = false;
-        localStorage.setItem('user', JSON.stringify(userData));
-        
-        // ⚠️ IMPORTANT: Check if company setup is needed
-        if (userData.company_setup_completed === false) {
-          console.log('⚠️ Company setup needed - redirecting to onboarding');
-          navigate('/onboarding', { replace: true });
-        } else {
-          console.log('✓ Setup complete - redirecting to dashboard');
-          navigate('/admin/dashboard', { replace: true });
-        }
-      } else {
-        // Fallback if no user data
-        navigate('/admin/dashboard', { replace: true });
+      // ✅ CRITICAL FIX: Update localStorage with the response data
+      if (response.data && response.data.user) {
+        const updatedUser = {
+          ...user,
+          ...response.data.user,
+          temp_password: false, // Ensure it's set to false
+        };
+
+        console.log('💾 Updating localStorage with:', updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        updateUserData({ temp_password: false });
       }
-      
+
+      // Redirect based on role and setup/profile status
+      setTimeout(() => {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          const userData = JSON.parse(storedUser);
+
+          if (userData.role === 'company_admin') {
+            console.log('→ Redirecting admin to:', 
+              userData.company_setup_completed ? '/admin/dashboard' : '/onboarding'
+            );
+            if (!userData.company_setup_completed) {
+              navigate('/onboarding', { replace: true });
+            } else {
+              navigate('/admin/dashboard', { replace: true });
+            }
+          } else {
+            console.log('→ Redirecting manager/hr to:',
+              userData.profile_completed ? '/dashboard' : '/onboarding/profile'
+            );
+            if (!userData.profile_completed) {
+              navigate('/onboarding/profile', { replace: true });
+            } else {
+              navigate('/dashboard', { replace: true });
+            }
+          }
+        }
+      }, 500);
+
     } catch (error) {
+      console.error('❌ Password change error:', error);
       toast({
         title: 'Error',
-        description:
-          error instanceof Error ? error.message : 'Failed to change password',
+        description: error instanceof Error ? error.message : 'Failed to change password',
         variant: 'destructive',
       });
     } finally {
@@ -142,36 +170,43 @@ const ChangePassword: React.FC = () => {
     }
   };
 
+  // If user doesn't exist, show loading
+  if (!user) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
-          <CardTitle className="text-center">Change Your Password</CardTitle>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Lock className="w-5 h-5 text-blue-600" />
+            Change Password
+          </CardTitle>
         </CardHeader>
-        <CardContent className="p-6">
-          {/* Alert Message */}
+
+        <CardContent>
+          {/* Alert */}
           <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex gap-3">
             <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-yellow-800">
-              <strong>Temporary Password Detected</strong>
-              <p>You must change your password before continuing</p>
+            <div>
+              <p className="font-medium text-yellow-900">Temporary Password Detected</p>
+              <p className="text-sm text-yellow-800">You must change your password before continuing</p>
             </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Current Password */}
-            <div className="space-y-2">
-              <Label htmlFor="current-password">Current Password</Label>
+            <div>
+              <Label htmlFor="current">Current Password</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input
-                  id="current-password"
+                  id="current"
                   type={showCurrentPassword ? 'text' : 'password'}
-                  placeholder="Enter your temporary password"
+                  placeholder="Enter your current password"
                   value={form.currentPassword}
-                  onChange={(e) =>
-                    setForm({ ...form, currentPassword: e.target.value })
-                  }
+                  onChange={(e) => setForm({ ...form, currentPassword: e.target.value })}
                   className="pl-10 pr-10"
                   disabled={isLoading}
                 />
@@ -179,29 +214,24 @@ const ChangePassword: React.FC = () => {
                   type="button"
                   onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  disabled={isLoading}
                 >
-                  {showCurrentPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
+                  {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
 
             {/* New Password */}
-            <div className="space-y-2">
-              <Label htmlFor="new-password">New Password</Label>
+            <div>
+              <Label htmlFor="new">New Password</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input
-                  id="new-password"
+                  id="new"
                   type={showNewPassword ? 'text' : 'password'}
-                  placeholder="Create a new password"
+                  placeholder="Enter new password"
                   value={form.newPassword}
-                  onChange={(e) =>
-                    setForm({ ...form, newPassword: e.target.value })
-                  }
+                  onChange={(e) => setForm({ ...form, newPassword: e.target.value })}
                   className="pl-10 pr-10"
                   disabled={isLoading}
                 />
@@ -209,47 +239,35 @@ const ChangePassword: React.FC = () => {
                   type="button"
                   onClick={() => setShowNewPassword(!showNewPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  disabled={isLoading}
                 >
-                  {showNewPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
+                  {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              <p className="text-xs text-gray-500">
-                At least 8 characters recommended
-              </p>
+              <p className="text-xs text-gray-500 mt-1">At least 8 characters recommended</p>
             </div>
 
             {/* Confirm Password */}
-            <div className="space-y-2">
-              <Label htmlFor="confirm-password">Confirm New Password</Label>
+            <div>
+              <Label htmlFor="confirm">Confirm New Password</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input
-                  id="confirm-password"
+                  id="confirm"
                   type={showConfirmPassword ? 'text' : 'password'}
-                  placeholder="Confirm your new password"
+                  placeholder="Confirm new password"
                   value={form.confirmPassword}
-                  onChange={(e) =>
-                    setForm({ ...form, confirmPassword: e.target.value })
-                  }
+                  onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
                   className="pl-10 pr-10"
                   disabled={isLoading}
                 />
                 <button
                   type="button"
-                  onClick={() =>
-                    setShowConfirmPassword(!showConfirmPassword)
-                  }
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  disabled={isLoading}
                 >
-                  {showConfirmPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
@@ -257,8 +275,8 @@ const ChangePassword: React.FC = () => {
             {/* Submit Button */}
             <Button
               type="submit"
-              className="w-full mt-6"
               disabled={isLoading}
+              className="w-full mt-6 bg-blue-600 hover:bg-blue-700"
             >
               {isLoading ? (
                 <>

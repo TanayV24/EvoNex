@@ -25,13 +25,12 @@ Content-Type: application/json
 }
 
 ### Login (Replace password with temp password from email)
-POST http://localhost:8000/api/auth/login/
+POST http://localhost:8000/api/users/login/
 Content-Type: application/json
 
 {
-  "email": "admin@torrent.com",
-  "password": "Tanay123",
-  "role": "admin"
+  "email": "vakhariatanay@gmail.com",
+  "password": "9rGNoJdmd9i8"
 }
 
 ### Get Dashboard (Replace token)
