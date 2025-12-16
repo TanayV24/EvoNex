@@ -1,15 +1,16 @@
-// workos/src/services/api.ts
+// workos/src/services/api.ts - UNIFIED ENDPOINTS
+
 import type { Room, Message } from "@/types/chat";
 
 // Use backend URL from environment or default
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 /**
- * authHeaders()
- * - Prefer the new key 'access_token' stored by AuthContext.
- * - Fallback to legacy 'token' if present (keeps backwards compatibility).
- * - Returns an object suitable for fetch headers: { Authorization: 'Bearer ...' }
- */
+* authHeaders()
+* - Prefer the new key 'access_token' stored by AuthContext.
+* - Fallback to legacy 'token' if present (keeps backwards compatibility).
+* - Returns an object suitable for fetch headers: { Authorization: 'Bearer ...' }
+*/
 function authHeaders() {
   // primary key used by AuthContext
   const accessToken = localStorage.getItem("access_token");
@@ -27,10 +28,11 @@ function authHeaders() {
 }
 
 /* ---------------------------
-   Chat API helpers
-   --------------------------- */
+Chat API helpers
+--------------------------- */
+
 export const chatRest = {
-  async getRooms(): Promise<Room[]> {
+  async getRooms(): Promise {
     const res = await fetch(`${API}/api/chat/rooms/`, {
       headers: { ...authHeaders() },
     });
@@ -40,7 +42,7 @@ export const chatRest = {
     return res.json();
   },
 
-  async getRoomMessages(roomId: string): Promise<Message[]> {
+  async getRoomMessages(roomId: string): Promise {
     const res = await fetch(`${API}/api/chat/rooms/${roomId}/messages/`, {
       headers: { ...authHeaders() },
     });
@@ -68,10 +70,11 @@ export const chatRest = {
 };
 
 /* ---------------------------
-   Auth & user helpers
-   --------------------------- */
+Auth & user helpers - UNIFIED
+--------------------------- */
+
 export const authRest = {
-  // Company Admin Login
+  // ✅ UNIFIED LOGIN ENDPOINT FOR ALL USERS (Admin + HR/Manager/Employee)
   async login(email: string, password: string) {
     const res = await fetch(`${API}/api/auth/login/`, {
       method: "POST",
@@ -89,7 +92,10 @@ export const authRest = {
     return res.json();
   },
 
-  // Change temporary password
+  // ✅ UNIFIED CHANGE TEMP PASSWORD ENDPOINT FOR ALL USERS (Admin + HR/Manager/Employee)
+  // Updates:
+  // - CompanyAdmin.temp_password_set for admin users
+  // - UsersAppUser.temp_password for HR/Manager/Employee users
   async changeTempPassword(oldPassword: string, newPassword: string) {
     const res = await fetch(`${API}/api/auth/change_temp_password/`, {
       method: "POST",
@@ -111,7 +117,7 @@ export const authRest = {
     return res.json();
   },
 
-  // Company setup
+  // Company setup (Admin only)
   async companySetup(payload: any) {
     const res = await fetch(`${API}/api/auth/company_setup/`, {
       method: "POST",
@@ -125,30 +131,6 @@ export const authRest = {
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || "Company setup failed");
-    }
-
-    return res.json();
-  },
-
-  // Complete Profile (HR/Manager/Employee)
-  async completeProfile(data: {
-    first_name?: string;
-    last_name?: string;
-    phone?: string;
-    // add other fields as needed
-  }) {
-    const res = await fetch(`${API}/api/users/complete_profile/`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...authHeaders(),
-      },
-      body: JSON.stringify(data),
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || "Failed to complete profile");
     }
 
     return res.json();
@@ -174,7 +156,7 @@ export const authRest = {
     return res.json();
   },
 
-  // Example: logout on backend if you have an endpoint
+  // Logout on backend if you have an endpoint
   async logout() {
     const res = await fetch(`${API}/api/auth/logout/`, {
       method: "POST",
@@ -183,21 +165,56 @@ export const authRest = {
         ...authHeaders(),
       },
     });
+
     if (!res.ok) {
       // ignore errors in logout for now
       return;
     }
+
     return res.json();
   },
-
-  // other auth related helpers as needed...
 };
 
 /* ---------------------------
-   Users helpers (company HR listing)
-   --------------------------- */
+Users helpers
+--------------------------- */
+
 export const usersRest = {
-  // List HR Users (company)
+  // ✅ COMPLETE PROFILE ENDPOINT FOR HR/Manager/Employee
+  // Path: POST /api/users/complete_profile/
+  async completeProfile(data: {
+    full_name?: string;
+    phone?: string;
+    designation?: string;
+    department?: string;
+    gender?: string;
+    date_of_birth?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    pincode?: string;
+    marital_status?: string;
+    bio?: string;
+  }) {
+    const res = await fetch(`${API}/api/users/complete_profile/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders(),
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || "Failed to complete profile");
+    }
+
+    return res.json();
+  },
+
+  // List HR Users (company) - optional helper
   async listHR() {
     const res = await fetch(`${API}/api/users/company_hrs/`, {
       headers: { ...authHeaders() },
@@ -209,8 +226,6 @@ export const usersRest = {
 
     return res.json();
   },
-
-  
 };
 
 export default {
