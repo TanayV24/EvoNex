@@ -137,7 +137,7 @@ export const authRest = {
     phone?: string;
     // add other fields as needed
   }) {
-    const res = await fetch(`${API}/api/auth/complete_profile/`, {
+    const res = await fetch(`${API}/api/users/complete_profile/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -210,7 +210,7 @@ export const usersRest = {
     return res.json();
   },
 
-  // Add additional users functions here...
+  
 };
 
 export default {

@@ -94,27 +94,67 @@ const Login: React.FC = () => {
       });
 
       // Redirect based on temp_password flag
-      if (data.data.user.temp_password || data.data.user.company_setup_completed === false) {
-          // User needs onboarding (password change or company setup)
-          console.log('⚠️ Onboarding needed - redirecting to onboarding page');
+      // Redirect based on role and setup flags
+      const userRole = data.data.user.role;
+      const tempPassword = data.data.user.temp_password;
+      const setupCompleted = data.data.user.company_setup_completed;
+      const profileCompleted = data.data.user.profile_completed;
+
+      console.log('🔍 Redirect logic:', { userRole, tempPassword, setupCompleted, profileCompleted });
+
+      // ADMIN FLOW
+      if (userRole === 'company_admin') {
+          if (tempPassword === true) {
+              // Admin with temp password → Change password page
+              console.log('🔐 Admin: Temp password detected → /auth/change-password');
+              setTimeout(() => {
+                  navigate('/auth/change-password', { replace: true });
+              });
+          } else if (setupCompleted === false) {
+              // Admin needs company setup
+              console.log('🏢 Admin: Setup not completed → /onboarding');
+              setTimeout(() => {
+                  navigate('/onboarding', { replace: true });
+              });
+          } else {
+              // Admin all set
+              console.log('✅ Admin: All setup complete → /admin/dashboard');
+              setTimeout(() => {
+                  navigate('/admin/dashboard', { replace: true });
+              });
+          }
+      }
+  
+      // HR / MANAGER / EMPLOYEE FLOW
+      else if (['manager', 'hr_manager', 'team_lead', 'employee'].includes(userRole)) {
+          if (tempPassword === true) {
+              // HR/Manager with temp password → Change password page
+              console.log('🔐 HR/Manager: Temp password detected → /users/change-password');
+              setTimeout(() => {
+                  navigate('/users/change-password', { replace: true });
+              });
+          } else if (profileCompleted === false) {
+              // HR/Manager needs profile completion
+              console.log('👤 HR/Manager: Profile not completed → /profile-completion');
+              setTimeout(() => {
+                  navigate('/profile-completion', { replace: true });
+              });
+          } else {
+              // HR/Manager all set
+              console.log('✅ HR/Manager: All setup complete → /dashboard');
+              setTimeout(() => {
+                  navigate('/dashboard', { replace: true });
+              });
+          }
+      }
+      // UNKNOWN ROLE
+      else {
+          console.log('⚠️ Unknown role:', userRole);
           setTimeout(() => {
-            navigate('/onboarding', { replace: true });
-          });
-        } else {
-          // User is all set - go to dashboard
-          console.log('✓ All setup complete - redirecting to dashboard');
-          setTimeout(() => {
-            if (data.data.user.role === 'admin') {
-              navigate('/admin/dashboard', { replace: true });
-            } else if (data.data.user.role === 'employee') {
-              navigate('/employee/dashboard', { replace: true });
-            } else if (data.data.user.role === 'manager') {
-              navigate('/manager/dashboard', { replace: true });
-            } else {
               navigate('/dashboard', { replace: true });
-            }
           });
-        }
+      }
+
     } catch (error) {
       console.error('🔴 Login error:', error);
       toast({

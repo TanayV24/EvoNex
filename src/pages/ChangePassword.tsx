@@ -98,13 +98,13 @@ const ChangePassword: React.FC = () => {
 
       // Call appropriate endpoint based on role
       if (user?.role === 'company_admin') {
-        response = await authRest.changePassword(
+        response = await authRest.changeTempPassword(
           form.currentPassword,
           form.newPassword
         );
       } else {
         // Manager/HR/Employee
-        response = await usersRest.changePassword(
+        response = await authRest.changeTempPassword(
           form.currentPassword,
           form.newPassword
         );

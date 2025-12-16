@@ -10,7 +10,7 @@ import React, {
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-type UserRole = 'company_admin' | 'hr' | 'manager' | 'employee' | 'department_head' | 'admin';
+type UserRole = 'company_admin' | 'hr_manager' | 'manager' | 'team_lead' | 'employee';
 
 export interface User {
   id: string;

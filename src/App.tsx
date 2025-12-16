@@ -83,32 +83,30 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     // MANAGER/HR/EMPLOYEE FLOW
     // ============================================
     
-    else if (['manager', 'hr', 'team_lead', 'employee'].includes(user.role)) {
+      else if (['manager', 'hr', 'team_lead', 'employee'].includes(user.role)) {
       // Step 1: Temp password? → Change password page
       if (user.temp_password === true) {
-        if (currentPath !== '/auth/change-password') {
-          console.log('🔐 Manager/HR: Temp password detected → change-password');
-          navigate('/auth/change-password', { replace: true });
-        }
-        return;
+          if (currentPath !== '/users/change-password') {
+              console.log('🔐 Manager/HR: Temp password detected → /users/change-password');
+              navigate('/users/change-password', { replace: true });
+          }
+          return;
       }
-
       // Step 2: Profile not completed? → Profile completion page
       if (user.profile_completed === false) {
-        if (currentPath !== '/onboarding/profile') {
-          console.log('👤 Manager/HR: Profile not completed → onboarding/profile');
-          navigate('/onboarding/profile', { replace: true });
-        }
-        return;
+          if (currentPath !== '/profile-completion') {
+              console.log('👤 Manager/HR: Profile not completed → /profile-completion');
+              navigate('/profile-completion', { replace: true });
+          }
+          return;
       }
-
-      // Step 3: All done, don't go back to profile
-      if (user.profile_completed === true && currentPath === '/onboarding/profile') {
-        console.log('✅ Manager/HR: Profile complete → dashboard');
-        navigate('/dashboard', { replace: true });
-        return;
+      // Step 3: All done, don't go back to profile completion
+      if (user.profile_completed === true && currentPath === '/profile-completion') {
+          console.log('✅ Manager/HR: Profile complete → /dashboard');
+          navigate('/dashboard', { replace: true });
+          return;
       }
-    }
+  }
 
   }, [user, navigate, loading, isAuthenticated]);
 
@@ -150,6 +148,10 @@ function AppContent() {
         }
       />
       
+      <Route element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} path="/users/change-password" />
+      <Route element={<ProtectedRoute><ProfileCompletion /></ProtectedRoute>} path="/profile-completion" />
+
+
       <Route
         path="/admin/dashboard"
         element={

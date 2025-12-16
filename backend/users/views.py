@@ -1,4 +1,5 @@
-# users/views.py - USER AUTHENTICATION ENDPOINTS
+
+
 
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -9,15 +10,12 @@ from django.utils import timezone
 from .models import User
 from .serializers import UserLoginSerializer, UserProfileSerializer
 from companies.email import CompanyEmailService
+from companies.models import Department
+
 
 class UserViewSet(viewsets.ViewSet):
     """
     ViewSet for user authentication and profile management
-    
-    Endpoints:
-    - POST /api/users/login/ → Manager/HR/Employee login
-    - POST /api/users/change_password/ → Change password after login
-    - POST /api/users/profile/complete/ → Complete profile after password change
     """
     
     permission_classes = [IsAuthenticated]
@@ -30,30 +28,6 @@ class UserViewSet(viewsets.ViewSet):
     def login(self, request):
         """
         Login for Manager/HR/Employee users
-        
-        Request:
-        {
-            "email": "manager@company.com",
-            "password": "temp_password_123"
-        }
-        
-        Response:
-        {
-            "success": true,
-            "data": {
-                "token": "...",
-                "refresh_token": "...",
-                "user": {
-                    "id": "...",
-                    "email": "manager@company.com",
-                    "full_name": "Manager Name",
-                    "role": "manager",
-                    "temp_password": true,
-                    "profile_completed": false,
-                    "company_id": "..."
-                }
-            }
-        }
         """
         
         email = request.data.get('email')
@@ -74,7 +48,7 @@ class UserViewSet(viewsets.ViewSet):
         # Find user by email
         try:
             user = User.objects.get(email=email)
-            print(f"✓ User found: {user.full_name} (Role: {user.role})")
+            print(f"✓ User found: {getattr(user, 'name', 'Unknown')} (Role: {getattr(user, 'role', 'Unknown')})")
         except User.DoesNotExist:
             print(f"❌ User NOT found with email: {email}")
             return Response({
@@ -101,22 +75,26 @@ class UserViewSet(viewsets.ViewSet):
         user.last_login = timezone.now()
         user.save()
         
-        # Prepare user response
+        print(f"\n✓ User session created")
+        
+        # Prepare user response from in-memory object
         user_data = {
             'id': str(user.id),
             'email': user.email,
-            'full_name': user.full_name,
-            'phone': user.phone or '',
-            'role': user.role,
-            'company_id': str(user.company_id),
-            'department_id': str(user.department_id) if user.department_id else None,
-            'designation': user.designation or '',
-            'temp_password': user.temp_password,  # ✅ Critical flag
-            'profile_completed': user.profile_completed,  # ✅ Critical flag
-            'is_active': user.is_active,
+            'full_name': getattr(user, 'name', ''),
+            'phone': getattr(user, 'phone', ''),
+            'role': getattr(user, 'role', ''),
+            'company_id': getattr(user, 'company_id', None),
+            'department_id': str(getattr(user, 'department_id', None)) if getattr(user, 'department_id', None) else None,
+            'designation': getattr(user, 'designation', ''),
+            'temp_password': getattr(user, 'temp_password', True),
+            'profile_completed': getattr(user, 'profile_completed', False),
+            'is_active': getattr(user, 'is_active', True),
         }
         
-        print(f"✓ Login successful - temp_password={user.temp_password}")
+        print(f"\n✅ LOGIN SUCCESSFUL")
+        print(f"User: {getattr(user, 'name', 'Unknown')} ({email})")
+        print("="*80 + "\n")
         
         return Response({
             'success': True,
@@ -135,48 +113,26 @@ class UserViewSet(viewsets.ViewSet):
     def change_password(self, request):
         """
         Change temporary password for Manager/HR/Employee
-        
-        Request:
-        {
-            "old_password": "temp_password_123",
-            "new_password": "NewPassword123!"
-        }
-        
-        Response (IMPORTANT):
-        {
-            "success": true,
-            "data": {
-                "user": {
-                    "id": "...",
-                    "email": "...",
-                    "role": "...",
-                    "temp_password": false,  ← MUST BE FALSE
-                    "profile_completed": false
-                }
-            }
-        }
         """
         
         try:
-            # Get user from request (JWT authenticated)
-            # For SimpleJWT, we need to get user_id from token
-            from rest_framework_simplejwt.authentication import JWTAuthentication
-            auth = JWTAuthentication()
+            # ✅ Use request.user directly (already authenticated)
+            user = request.user
             
-            # User already in request from authentication
-            user = User.objects.get(id=request.user.id) if hasattr(request.user, 'id') else None
+            print(f"\n🔐 PASSWORD CHANGE ATTEMPT")
+            print(f"User: {user.email}")
+            print(f"User ID: {user.id}")
+            print(f"Request user authenticated: {request.user.is_authenticated}")
             
-            if not user:
+            if not user or not user.is_authenticated:
                 return Response({
                     'success': False,
-                    'error': 'User not found'
-                }, status=status.HTTP_404_NOT_FOUND)
+                    'error': 'User not authenticated'
+                }, status=status.HTTP_401_UNAUTHORIZED)
             
             old_password = request.data.get('old_password')
             new_password = request.data.get('new_password')
             
-            print(f"\n🔐 PASSWORD CHANGE ATTEMPT")
-            print(f"User: {user.email}")
             print(f"Old password length: {len(old_password) if old_password else 0}")
             print(f"New password length: {len(new_password) if new_password else 0}")
             
@@ -199,21 +155,25 @@ class UserViewSet(viewsets.ViewSet):
             
             # Set new password
             user.set_password(new_password)
-            user.temp_password = False  # ✅ CRITICAL: Mark password as changed
+            user.temp_password = False
             user.password_changed_at = timezone.now()
             user.save()
             
-            print(f"✓ Password changed and marked as non-temporary")
+            print(f"✓ Password changed")
             
-            # Return updated user data
+            # ✅ Return response from in-memory user object (NO re-query)
             user_data = {
                 'id': str(user.id),
                 'email': user.email,
-                'full_name': user.full_name,
-                'role': user.role,
-                'temp_password': False,  # ✅ MUST BE FALSE
-                'profile_completed': user.profile_completed,
+                'full_name': getattr(user, 'name', ''),
+                'role': getattr(user, 'role', ''),
+                'temp_password': getattr(user, 'temp_password', False),
+                'profile_completed': getattr(user, 'profile_completed', False),
             }
+            
+            print(f"\n✅ PASSWORD CHANGED SUCCESSFULLY")
+            print(f"User: {getattr(user, 'name', 'Unknown')} ({user.email})")
+            print("="*80 + "\n")
             
             return Response({
                 'success': True,
@@ -224,6 +184,8 @@ class UserViewSet(viewsets.ViewSet):
         
         except Exception as e:
             print(f"❌ Error: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return Response({
                 'success': False,
                 'error': str(e)
@@ -233,85 +195,184 @@ class UserViewSet(viewsets.ViewSet):
     # COMPLETE PROFILE ENDPOINT
     # ============================================
     
-    @action(detail=False, methods=['post'], url_path='profile/complete')
+    @action(detail=False, methods=['post'], url_path='complete_profile')
     def complete_profile(self, request):
         """
         Complete user profile after password change
-        
-        Request:
-        {
-            "full_name": "John Manager",
-            "phone": "+91-9876543210",
-            "department": "HR",
-            "designation": "Manager"
-        }
-        
-        Response:
-        {
-            "success": true,
-            "data": {
-                "user": {
-                    "id": "...",
-                    "email": "...",
-                    "profile_completed": true  ← MUST BE TRUE
-                }
-            }
-        }
         """
-        
         try:
-            # Get authenticated user
+            # ✅ Use request.user directly (already authenticated)
             user = request.user
             
             print(f"\n👤 PROFILE COMPLETION ATTEMPT")
             print(f"User: {user.email}")
+            print(f"User ID: {user.id}")
+            print(f"Request user authenticated: {request.user.is_authenticated}")
             
-            # Get data from request
-            full_name = request.data.get('full_name')
-            phone = request.data.get('phone')
-            department = request.data.get('department')
-            designation = request.data.get('designation')
-            
-            # Validate required fields
-            if not full_name or not department:
+            if not user or not user.is_authenticated:
+                print(f"❌ User not authenticated")
                 return Response({
                     'success': False,
-                    'error': 'Full name and department are required'
+                    'error': 'User not authenticated'
+                }, status=status.HTTP_401_UNAUTHORIZED)
+            
+            print(f"Current temp_password: {getattr(user, 'temp_password', 'NOT SET')}")
+            print(f"Current profile_completed: {getattr(user, 'profile_completed', 'NOT SET')}")
+            
+            # Get all data from request
+            full_name = request.data.get('full_name')
+            phone = request.data.get('phone')
+            designation = request.data.get('designation')
+            department = request.data.get('department')
+            gender = request.data.get('gender')
+            date_of_birth = request.data.get('date_of_birth')
+            address = request.data.get('address')
+            city = request.data.get('city')
+            state = request.data.get('state')
+            country = request.data.get('country')
+            pincode = request.data.get('pincode')
+            marital_status = request.data.get('marital_status')
+            bio = request.data.get('bio')
+            
+            # Validate required fields
+            if not full_name or not designation:
+                return Response({
+                    'success': False,
+                    'error': 'Full name and designation are required'
                 }, status=status.HTTP_400_BAD_REQUEST)
             
-            # Update user profile
-            user.full_name = full_name
+            # Get department ID from department name
+            company_id = None
+            if hasattr(user, 'company_id') and user.company_id:
+                company_id = user.company_id
+                print(f"✓ Company ID: {company_id}")
+            else:
+                print(f"⚠ No company_id found for user")
+            
+            department_id = None
+            if department:
+                try:
+                    print(f"\n🔍 Looking for department: {department}")
+                    if company_id:
+                        print(f"  Searching in company: {company_id}")
+                        dept = Department.objects.get(name__iexact=department, company_id=company_id)
+                    else:
+                        print(f"  Searching globally (no company_id)")
+                        dept = Department.objects.get(name__iexact=department)
+                    department_id = dept.id
+                    print(f"✓ Department found: {department} (ID: {department_id})")
+                except Department.DoesNotExist:
+                    print(f"⚠ Department not found: {department}")
+                    print(f"  This is OK - profile can be completed without department")
+                    department_id = None
+            
+            # ✅ UPDATE ALL USER FIELDS
+            print(f"\n📝 UPDATING USER FIELDS:")
+            
             if phone:
                 user.phone = phone
-            user.department_name = department
+                print(f"  ✓ phone = {phone}")
+            
+            user.name = full_name
+            print(f"  ✓ name = {full_name}")
+            
             if designation:
                 user.designation = designation
+                print(f"  ✓ designation = {designation}")
+            
+            if department_id:
+                user.department_id = department_id
+                print(f"  ✓ department_id = {department_id}")
+            
+            # Optional fields
+            if gender and hasattr(user, 'gender'):
+                user.gender = gender
+                print(f"  ✓ gender = {gender}")
+            
+            if date_of_birth and hasattr(user, 'date_of_birth'):
+                user.date_of_birth = date_of_birth
+                print(f"  ✓ date_of_birth = {date_of_birth}")
+            
+            if address and hasattr(user, 'address'):
+                user.address = address
+                print(f"  ✓ address = {address}")
+            
+            if city and hasattr(user, 'city'):
+                user.city = city
+                print(f"  ✓ city = {city}")
+            
+            if state and hasattr(user, 'state'):
+                user.state = state
+                print(f"  ✓ state = {state}")
+            
+            if country and hasattr(user, 'country'):
+                user.country = country
+                print(f"  ✓ country = {country}")
+            
+            if pincode and hasattr(user, 'pincode'):
+                user.pincode = pincode
+                print(f"  ✓ pincode = {pincode}")
+            
+            if marital_status and hasattr(user, 'marital_status'):
+                user.marital_status = marital_status
+                print(f"  ✓ marital_status = {marital_status}")
+            
+            if bio and hasattr(user, 'bio'):
+                user.bio = bio
+                print(f"  ✓ bio = {bio}")
             
             # Mark profile as completed
-            user.mark_profile_completed()  # Sets profile_completed=True and profile_completed_at
+            user.profile_completed = True
+            print(f"  ✓ profile_completed = TRUE")
             
-            print(f"✓ Profile completed for {user.full_name}")
+            # Keep temp_password as False
+            user.temp_password = False
+            print(f"  ✓ temp_password = FALSE (maintained)")
             
+            if hasattr(user, 'profile_completed_at'):
+                user.profile_completed_at = timezone.now()
+                print(f"  ✓ profile_completed_at = NOW")
+            
+            # ✅ SAVE TO DATABASE
+            print(f"\n✅ SAVING TO DATABASE...")
+            user.save()
+            print(f"✓ Save completed")
+            
+            # ✅ Use in-memory user object for response (NO fresh DB lookup)
+            print(f"\n✅ BUILDING RESPONSE FROM IN-MEMORY USER:")
             user_data = {
                 'id': str(user.id),
                 'email': user.email,
-                'full_name': user.full_name,
-                'phone': user.phone,
-                'department': user.department_name,
-                'designation': user.designation,
-                'role': user.role,
-                'profile_completed': True,  # ✅ MUST BE TRUE
+                'full_name': getattr(user, 'name', ''),
+                'phone': getattr(user, 'phone', ''),
+                'role': getattr(user, 'role', ''),
+                'company_id': getattr(user, 'company_id', None),
+                'department_id': str(department_id) if department_id else None,
+                'designation': getattr(user, 'designation', ''),
+                'profile_completed': getattr(user, 'profile_completed', False),
+                'temp_password': getattr(user, 'temp_password', False),
             }
+            
+            print(f"  ✓ id = {user_data['id']}")
+            print(f"  ✓ email = {user_data['email']}")
+            print(f"  ✓ name = {user_data['full_name']}")
+            print(f"  ✓ phone = {user_data['phone']}")
+            print(f"  ✓ designation = {user_data['designation']}")
+            print(f"  ✓ profile_completed = {user_data['profile_completed']}")
+            
+            print(f"\n✅ PROFILE COMPLETED SUCCESSFULLY")
+            print(f"User: {user_data['full_name']} ({user_data['email']})")
+            print("="*80 + "\n")
             
             return Response({
                 'success': True,
-                'data': {
-                    'user': user_data
-                }
+                'data': {'user': user_data}
             }, status=status.HTTP_200_OK)
-        
+            
         except Exception as e:
             print(f"❌ Error: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return Response({
                 'success': False,
                 'error': str(e)

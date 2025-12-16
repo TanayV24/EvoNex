@@ -158,8 +158,18 @@ class AuthViewSet(viewsets.ViewSet):
         refresh_token = str(refresh)
         print(f"✓ Tokens generated successfully")
 
-        # Get CompanyAdmin to check if temp password
-        print(f"\n👤 Fetching CompanyAdmin info...")
+        # Get user role from Supabase users table (for HR/Manager/Employee)
+        user_role = 'unknown'
+        temp_password = False
+        company_id = None
+        company_name = "Unknown"
+        full_name = user.first_name or user.username
+        company_setup_completed = False
+        profile_completed = False
+
+        print(f"\n👤 Fetching user info...")
+
+        # Try to get CompanyAdmin (for admin users)
         try:
             admin = CompanyAdmin.objects.get(user=user)
             temp_password = admin.temp_password_set
@@ -167,14 +177,31 @@ class AuthViewSet(viewsets.ViewSet):
             company_name = admin.company.name
             full_name = admin.full_name
             company_setup_completed = admin.company_setup_completed
-            print(f"✓ CompanyAdmin found")
+            user_role = 'company_admin'
+            print(f"✓ CompanyAdmin found - role: company_admin")
         except CompanyAdmin.DoesNotExist:
-            print(f"⚠️ CompanyAdmin NOT found for user")
-            temp_password = False
-            company_id = None
-            company_name = "Unknown"
-            full_name = user.first_name or user.username
-            company_setup_completed = False
+            print(f"⚠️ CompanyAdmin NOT found, checking UsersAppUser table...")
+            # Try to get UsersAppUser (for HR/Manager/Employee)
+            try:
+                supabase_user = UsersAppUser.objects.get(email=user.email)
+                temp_password = supabase_user.temp_password  # ✅ From Supabase!
+                profile_completed = supabase_user.profile_completed  # ✅ From Supabase!
+                user_role = supabase_user.role  # ✅ From Supabase!
+                full_name = supabase_user.name
+                company_id = str(supabase_user.company_id) if supabase_user.company_id else None  # ✅ ADD THIS
+                if supabase_user.company_id:
+                    try:
+                        company = Company.objects.get(id=supabase_user.company_id)
+                        company_name = company.name
+                    except Company.DoesNotExist:
+                        company_name = "Unknown"
+                    else:
+                        company_name = "Unknown"
+                print(f"✓ UsersAppUser found - role: {user_role}, temp_password: {temp_password}")
+            except UsersAppUser.DoesNotExist:
+                print(f"⚠️ UsersAppUser NOT found either")
+                user_role = 'unknown'
+                temp_password = False
 
         response_data = {
             'success': True,
@@ -190,10 +217,12 @@ class AuthViewSet(viewsets.ViewSet):
                     'company_name': company_name,
                     'temp_password': temp_password,
                     'company_setup_completed': company_setup_completed,
-                    'role': 'company_admin'
+                    'profile_completed': profile_completed,
+                    'role': user_role  # ✅ CORRECT ROLE!
                 }
             }
         }
+
 
         print(f"\n✅ LOGIN SUCCESSFUL")
         print(f"User: {full_name} ({email})")
