@@ -10,7 +10,7 @@ import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { LeaveBalance } from '@/components/dashboard/LeaveBalance';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useSidebarCollapse } from '@/contexts/sideBarContext';
+import { useSidebarCollapse } from '@/contexts/SidebarContext';
 import { Users, Clock, CheckSquare, DollarSign, Calendar, TrendingUp, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
