@@ -145,16 +145,33 @@ const ChangePassword: React.FC = () => {
             } else {
               navigate('/admin/dashboard', { replace: true });
             }
-          } else {
-            console.log('→ Redirecting manager/hr to:',
-              userData.profile_completed ? '/dashboard' : '/onboarding/profile'
-            );
-            if (!userData.profile_completed) {
-              navigate('/onboarding/profile', { replace: true });
-            } else {
-              navigate('/dashboard', { replace: true });
+          } else if (userData.role === 'manager' || userData.role === 'hr') {
+              console.log('→ Redirecting employee/team_lead to:', 
+                userData.profile_completed ? '/ManagerDashboard' : '/profile-completion'
+              );
+              if (!userData.profile_completed) {
+                navigate('/profile-completion', { replace: true });
+              } else {
+                navigate('/ManagerDashboard', { replace: true });
+              }
             }
-          }
+            // EMPLOYEE / TEAM_LEAD - should go to /dashboard
+            else if (userData.role === 'employee' || userData.role === 'team_lead') {
+              console.log('→ Redirecting employee/team_lead to:', 
+                userData.profile_completed ? '/dashboard' : '/profile-completion'
+              );
+              if (!userData.profile_completed) {
+                navigate('/profile-completion', { replace: true });
+              } else {
+                navigate('/dashboard', { replace: true });
+              }
+            }
+            // FALLBACK - unknown role
+            else {
+              console.log('⚠️ Unknown role:', userData.role);
+              navigate('/landing', { replace: true });
+            }
+
         }
       }, 500);
 

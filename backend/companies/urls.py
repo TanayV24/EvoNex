@@ -22,9 +22,11 @@ router.register(r'admin-dashboard', AdminDashboardViewSet, basename='admin-dashb
 # Create an explicit view mapping for add_hr (guarantees the route exists)
 # This maps POST /api/auth/add_hr/ directly to the add_hr action of AuthViewSet
 add_hr_view = AuthViewSet.as_view({'post': 'add_hr'})
+add_manager_view = AuthViewSet.as_view({'post': 'add_manager'})
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include(router.urls)),           # normal router (e.g. /api/auth/)
     path('api/auth/add_hr/', add_hr_view, name='add-hr-explicit'),  # explicit guaranteed route
+    path('api/auth/add_manager/', add_manager_view, name='add-manager-explicit'),  # NEW
 ]

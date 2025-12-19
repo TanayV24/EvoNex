@@ -156,6 +156,25 @@ export const authRest = {
     return res.json();
   },
 
+  // ✅ ADD MANAGER
+  async addManager(name: string, email: string, role: string) {
+  const res = await fetch(`${API}/api/auth/add_manager/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+    },
+    body: JSON.stringify({ name, email, role }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || "Failed to add manager");
+    }
+
+    return res.json();
+  },
+
   // Logout on backend if you have an endpoint
   async logout() {
     const res = await fetch(`${API}/api/auth/logout/`, {

@@ -34,7 +34,7 @@ const ProfileCompletion: React.FC = () => {
     full_name: user?.full_name || '',
     phone: '',
     designation: '',
-    department: user?.role === 'hr_manager' ? 'HR' : '',
+    department: user?.role === 'hr' ? 'HR' : '',
     gender: '',
     date_of_birth: '',
     address: '',
@@ -55,7 +55,7 @@ const ProfileCompletion: React.FC = () => {
     // ✅ FIX: Safe role checking without accessing company_id
     const userRole = user?.role?.toLowerCase() || '';
     
-    if (userRole === 'hr_manager' || userRole === 'hr' || userRole === 'company_admin') {
+    if (userRole === 'hr' || userRole === 'manager' || userRole === 'company_admin') {
       setIsHRRole(true);
     }
 
@@ -82,7 +82,7 @@ const ProfileCompletion: React.FC = () => {
         console.log('No access token, using default departments');
         return;
       }
-
+      
       const response = await fetch('http://localhost:8000/api/companies/departments/', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -217,7 +217,12 @@ const ProfileCompletion: React.FC = () => {
       });
 
       setTimeout(() => {
-        navigate('/dashboard', { replace: true });
+        const userRole = user?.role?.toLowerCase() || '';
+        if (userRole === 'hr' || userRole === 'manager') {
+          navigate('/ManagerDashboard', { replace: true });
+        } else {
+          navigate('/dashboard', { replace: true });
+        }
       }, 1000);
 
     } catch (error) {

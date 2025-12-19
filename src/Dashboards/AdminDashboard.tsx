@@ -1,255 +1,269 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { KPICard } from '@/components/dashboard/KPICard';
-import { AttendanceChart } from '@/components/dashboard/AttendanceChart';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { useAuth } from '@/contexts/AuthContext';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from '@/hooks/use-toast';
 import {
-  Users,
-  Clock,
-  CheckSquare,
-  DollarSign,
-  Building2,
-  TrendingUp,
-  AlertTriangle,
-  FileText,
-  Settings,
-  Shield,
-  Activity,
-  PieChart,
-  ArrowUpRight,
-  ArrowDownRight,
+  Plus,
+  Loader2,
+  X,
+  Mail,
+  User,
 } from 'lucide-react';
-
-const adminKPIs = [
-  { title: 'Total Employees', value: 248, change: 12, changeType: 'increase' as const, icon: Users, color: 'primary' as const },
-  { title: 'Active Companies', value: 15, change: 3, changeType: 'increase' as const, icon: Building2, color: 'accent' as const },
-  { title: 'Pending Approvals', value: 23, change: 5, changeType: 'decrease' as const, icon: AlertTriangle, color: 'warning' as const },
-  { title: 'Monthly Revenue', value: 125000, prefix: '₹', change: 18, changeType: 'increase' as const, icon: DollarSign, color: 'primary' as const },
-];
-
-const systemHealth = [
-  { name: 'API Uptime', value: 99.9, status: 'healthy' },
-  { name: 'Database Performance', value: 94.2, status: 'healthy' },
-  { name: 'Storage Used', value: 67.5, status: 'warning' },
-  { name: 'Active Sessions', value: 156, status: 'healthy' },
-];
-
-const recentCompanies = [
-  { name: 'TechCorp Solutions', employees: 45, status: 'active', joinedDate: '2024-01-08' },
-  { name: 'Design Studio Pro', employees: 12, status: 'active', joinedDate: '2024-01-05' },
-  { name: 'StartupX Labs', employees: 28, status: 'pending', joinedDate: '2024-01-03' },
-  { name: 'Finance Partners', employees: 67, status: 'active', joinedDate: '2023-12-28' },
-];
-
-const complianceMetrics = [
-  { name: 'PF Compliance', percentage: 98, color: 'bg-emerald-500' },
-  { name: 'ESI Compliance', percentage: 95, color: 'bg-blue-500' },
-  { name: 'TDS Filed', percentage: 100, color: 'bg-purple-500' },
-  { name: 'Payroll Accuracy', percentage: 99.5, color: 'bg-amber-500' },
-];
+import { authRest } from '@/services/api';
 
 const AdminDashboard: React.FC = () => {
-  const { user } = useAuth();
+  // State for Add Team Member form
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    role: 'manager', // default
+  });
+  const [loading, setLoading] = useState(false);
+  const [addedMembers, setAddedMembers] = useState<any[]>([]);
+
+  // Handle form input change
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  // Handle Add Team Member
+  const handleAddTeamMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validation
+    if (!formData.name.trim() || !formData.email.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Name and email are required',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast({
+        title: 'Error',
+        description: 'Please enter a valid email address',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Call backend endpoint
+      const response = await authRest.addManager(
+        formData.name,
+        formData.email,
+        formData.role as 'manager' | 'hr' // Cast to correct type
+      );
+
+      if (response.success) {
+        toast({
+          title: 'Success!',
+          description: `${formData.name} has been added as ${formData.role}`,
+        });
+
+        // Add to recently added list
+        setAddedMembers((prev) => [
+          {
+            name: formData.name,
+            email: formData.email,
+            role: formData.role,
+            addedAt: new Date().toLocaleString(),
+          },
+          ...prev,
+        ]);
+
+        // Reset form
+        setFormData({
+          name: '',
+          email: '',
+          role: 'manager',
+        });
+
+        // Close form
+        setShowAddForm(false);
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to add team member',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <DashboardLayout
-      title={`Admin Console`}
-      subtitle="System overview and management dashboard"
-    >
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {adminKPIs.map((kpi, index) => (
-          <KPICard
-            key={kpi.title}
-            title={kpi.title}
-            value={kpi.value}
-            prefix={kpi.prefix}
-            change={kpi.change}
-            changeType={kpi.changeType}
-            icon={kpi.icon}
-            color={kpi.color}
-            delay={index * 0.1}
-          />
-        ))}
-      </div>
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header with Add Team Member Button */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+            <p className="text-gray-600 mt-1">Welcome back, Admin</p>
+          </div>
+          <Button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            {showAddForm ? 'Cancel' : 'Add Team Member'}
+          </Button>
+        </div>
 
-      {/* System Health & Recent Companies */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* System Health Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <Card variant="glass">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <Activity className="h-5 w-5 text-primary" />
-                System Health
+        {/* Add Team Member Form */}
+        {showAddForm && (
+          <Card className="mb-8 border-blue-200 bg-blue-50">
+            <CardHeader className="bg-blue-100 border-b border-blue-200">
+              <CardTitle className="flex items-center gap-2">
+                <Plus className="w-5 h-5 text-blue-600" />
+                Add New Team Member
               </CardTitle>
-              <Badge variant="success">All Systems Operational</Badge>
+              <p className="text-sm text-gray-600 mt-1">
+                Add a Manager, HR Manager, or Employee to your team
+              </p>
             </CardHeader>
-            <CardContent className="pt-4">
-              <div className="space-y-4">
-                {systemHealth.map((item, index) => (
-                  <motion.div
-                    key={item.name}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.5 + index * 0.1 }}
-                    className="flex items-center justify-between"
+
+            <CardContent className="pt-6">
+              <form onSubmit={handleAddTeamMember} className="space-y-4">
+                {/* Name Field */}
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    type="text"
+                    placeholder="e.g., John Doe"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    disabled={loading}
+                  />
+                </div>
+
+                {/* Email Field */}
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Address</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="e.g., john@company.com"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    disabled={loading}
+                  />
+                </div>
+
+                {/* Role Selection Dropdown */}
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role</Label>
+                  <select
+                    id="role"
+                    name="role"
+                    value={formData.role}
+                    onChange={handleInputChange}
+                    disabled={loading}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className={`h-2 w-2 rounded-full ${
-                        item.status === 'healthy' ? 'bg-emerald-500' : 'bg-amber-500'
-                      }`} />
-                      <span className="text-sm font-medium">{item.name}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold">
-                        {typeof item.value === 'number' && item.value < 100 ? `${item.value}%` : item.value}
-                      </span>
-                      {item.status === 'healthy' ? (
-                        <ArrowUpRight className="h-4 w-4 text-emerald-500" />
-                      ) : (
-                        <ArrowDownRight className="h-4 w-4 text-amber-500" />
-                      )}
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+                    <option value="manager">Manager</option>
+                    <option value="hr">HR Manager</option>
+                    <option value="employee">Employee</option>
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Role determines dashboard access and permissions
+                  </p>
+                </div>
+
+                {/* Submit Button */}
+                <div className="flex gap-2 pt-4">
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1"
+                  >
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {loading ? 'Adding Member...' : 'Add Team Member'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowAddForm(false)}
+                    disabled={loading}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
             </CardContent>
           </Card>
-        </motion.div>
+        )}
 
-        {/* Recent Companies */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-        >
-          <Card variant="glass">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-primary" />
-                Recent Companies
-              </CardTitle>
-              <Button variant="ghost" size="sm">View All</Button>
+        {/* Recently Added Users Section */}
+        {addedMembers.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Recently Added Team Members</CardTitle>
             </CardHeader>
-            <CardContent className="pt-4">
+            <CardContent>
               <div className="space-y-3">
-                {recentCompanies.map((company, index) => (
-                  <motion.div
-                    key={company.name}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.6 + index * 0.1 }}
-                    className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors"
+                {addedMembers.map((member, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition"
                   >
-                    <div>
-                      <p className="font-medium">{company.name}</p>
-                      <p className="text-xs text-muted-foreground">{company.employees} employees</p>
+                    <div className="flex items-center gap-4">
+                      {/* Avatar */}
+                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                        <User className="w-5 h-5 text-blue-600" />
+                      </div>
+
+                      {/* Member Info */}
+                      <div>
+                        <p className="font-medium text-gray-900">{member.name}</p>
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                          <Mail className="w-3 h-3" />
+                          {member.email}
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1">
+                          Role: <span className="font-semibold text-gray-600">{member.role}</span>
+                          {' '} • Added: {member.addedAt}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={company.status === 'active' ? 'success' : 'warning'}>
-                        {company.status}
-                      </Badge>
+
+                    {/* Status Badge */}
+                    <div className="text-right">
+                      <span className="inline-block px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
+                        ✓ Created
+                      </span>
+                      <p className="text-xs text-gray-400 mt-2">
+                        Email sent
+                      </p>
                     </div>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
             </CardContent>
           </Card>
-        </motion.div>
+        )}
+
+        {/* Other Dashboard Content Below */}
+        {/* ... your existing dashboard content ... */}
       </div>
-
-      {/* Compliance Metrics & Attendance Chart */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Compliance Metrics */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-        >
-          <Card variant="glass">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <Shield className="h-5 w-5 text-primary" />
-                Compliance Overview
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-4">
-              <div className="space-y-4">
-                {complianceMetrics.map((metric, index) => (
-                  <motion.div
-                    key={metric.name}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.7 + index * 0.1 }}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium">{metric.name}</span>
-                      <span className="text-sm font-semibold">{metric.percentage}%</span>
-                    </div>
-                    <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                      <motion.div
-                        className={`h-full ${metric.color} rounded-full`}
-                        initial={{ width: 0 }}
-                        animate={{ width: `${metric.percentage}%` }}
-                        transition={{ duration: 1, delay: 0.8 + index * 0.1 }}
-                      />
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <AttendanceChart />
-      </div>
-
-      {/* Quick Actions */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8 }}
-      >
-        <Card variant="glass">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold flex items-center gap-2">
-              <Settings className="h-5 w-5 text-primary" />
-              Quick Actions
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Button variant="outline" className="h-auto py-4 flex-col gap-2">
-                <Building2 className="h-5 w-5" />
-                <span className="text-xs">Add Company</span>
-              </Button>
-              <Button variant="outline" className="h-auto py-4 flex-col gap-2">
-                <Users className="h-5 w-5" />
-                <span className="text-xs">Manage Users</span>
-              </Button>
-              <Button variant="outline" className="h-auto py-4 flex-col gap-2">
-                <FileText className="h-5 w-5" />
-                <span className="text-xs">Generate Reports</span>
-              </Button>
-              <Button variant="outline" className="h-auto py-4 flex-col gap-2">
-                <PieChart className="h-5 w-5" />
-                <span className="text-xs">View Analytics</span>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-    </DashboardLayout>
+    </div>
   );
 };
 

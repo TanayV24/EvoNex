@@ -126,34 +126,47 @@ const Login: React.FC = () => {
       }
   
       // HR / MANAGER / EMPLOYEE FLOW
-      else if (['manager', 'hr_manager', 'team_lead', 'employee'].includes(userRole)) {
-          if (tempPassword === true) {
-              // HR/Manager with temp password → Change password page
-              console.log('🔐 HR/Manager: Temp password detected → /users/change-password');
-              setTimeout(() => {
-                  navigate('/users/change-password', { replace: true });
-              });
-          } else if (profileCompleted === false) {
-              // HR/Manager needs profile completion
-              console.log('👤 HR/Manager: Profile not completed → /profile-completion');
-              setTimeout(() => {
-                  navigate('/profile-completion', { replace: true });
-              });
-          } else {
-              // HR/Manager all set
-              console.log('✅ HR/Manager: All setup complete → /dashboard');
-              setTimeout(() => {
-                  navigate('/dashboard', { replace: true });
-              });
-          }
-      }
-      // UNKNOWN ROLE
-      else {
-          console.log('⚠️ Unknown role:', userRole);
-          setTimeout(() => {
-              navigate('/dashboard', { replace: true });
-          });
-      }
+      else if (['manager', 'hr', 'team_lead', 'employee'].includes(userRole)) {
+        if (tempPassword === true) {
+            // HR/Manager with temp password → Change password page
+            console.log('🔐 HR/Manager: Temp password detected → /users/change-password');
+            setTimeout(() => {
+                navigate('/users/change-password', { replace: true });
+            });
+
+        } else if (profileCompleted === false) {
+            // HR/Manager needs profile completion
+            console.log('👤 HR/Manager: Profile not completed → /profile-completion');
+            setTimeout(() => {
+                navigate('/profile-completion', { replace: true });
+            });
+
+        } else {
+            // HR/Manager all set → Different routes by role
+            console.log('✅ HR/Manager: All setup complete → route by role');
+            
+            if (userRole === 'manager' || userRole === 'hr') {
+                // Manager and HR go to ManagerDashboard
+                console.log('  → /managerdashboard (manager/hr)');
+                setTimeout(() => {
+                    navigate('/managerdashboard', { replace: true });
+                });
+            } else {
+                // Employee and Team Lead go to regular Dashboard
+                console.log('  → /dashboard (employee/team_lead)');
+                setTimeout(() => {
+                    navigate('/dashboard', { replace: true });
+                });
+            }
+        }
+    }
+    // UNKNOWN ROLE
+    else {
+        console.log('⚠️ Unknown role:', userRole);
+        setTimeout(() => {
+            navigate('/dashboard', { replace: true });
+        });
+    }
 
     } catch (error) {
       console.error('🔴 Login error:', error);

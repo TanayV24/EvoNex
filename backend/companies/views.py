@@ -223,7 +223,7 @@ class AuthViewSet(viewsets.ViewSet):
                     'temp_password': temp_password,
                     'company_setup_completed': company_setup_completed,
                     'profile_completed': profile_completed,
-                    'role': user_role
+                    'role':  supabase_user.role,
                 }
             }
         }
@@ -309,6 +309,14 @@ class AuthViewSet(viewsets.ViewSet):
         user.save()
         print(f"✓ New password saved in auth_user table")
 
+        user_role = 'unknown'
+        temp_password = False
+        profile_completed = None
+        company_setup_completed = None
+        full_name = user.first_name or user.username
+        company_id = None
+        company_name = "Unknown"
+
         # Update CompanyAdmin if this is an admin user
         print(f"\n👤 Checking if user is CompanyAdmin...")
         try:
@@ -316,6 +324,12 @@ class AuthViewSet(viewsets.ViewSet):
             admin.temp_password_set = False
             admin.password_changed_at = timezone.now()
             admin.save()
+            user_role = 'company_admin'
+            company_id = str(admin.company.id)
+            company_name = admin.company.name
+            full_name = admin.full_name
+            company_setup_completed = admin.company_setup_completed
+
             print(f"✓ CompanyAdmin updated - temp_password_set = False")
         except CompanyAdmin.DoesNotExist:
             print(f"⚠️ CompanyAdmin NOT found, checking UsersAppUser...")
@@ -327,18 +341,57 @@ class AuthViewSet(viewsets.ViewSet):
                 supabase_user.temp_password = False
                 supabase_user.password_changed_at = timezone.now()
                 supabase_user.save()
+                supabase_user = UsersAppUser.objects.get(email=user.email)
+                temp_password = supabase_user.temp_password
+                profile_completed = supabase_user.profile_completed
+                user_role = supabase_user.role
+                full_name = supabase_user.name
+                company_id = str(supabase_user.company_id) if supabase_user.company_id else None
+                
+                if supabase_user.company_id:
+                    try:
+                        company = Company.objects.get(id=supabase_user.company_id)
+                        company_name = company.name
+                    except Company.DoesNotExist:
+                        company_name = "Unknown"
+                else:
+                    company_name = "Unknown"
+
                 print(f"✓ UsersAppUser updated - temp_password = False")
             except UsersAppUser.DoesNotExist:
-                print(f"⚠️ UsersAppUser NOT found either - this is unexpected")
+                print(f"⚠️ UsersAppUser NOT found either")
+                user_role = 'unknown'
+                temp_password = False
 
         print(f"\n✅ PASSWORD CHANGED SUCCESSFULLY")
         print(f"User: {user.email}")
         print("="*80 + "\n")
 
-        return Response({
+        response_data = {
             'success': True,
-            'message': 'Password changed successfully'
-        }, status=status.HTTP_200_OK)
+            'message': 'Password changed successfully',
+            'data': {
+                'user': {
+                    'id': str(user.id),
+                    'email': user.email,
+                    'username': user.username,
+                    'full_name': full_name,
+                    'company_id': company_id,
+                    'company_name': company_name,
+                    'temp_password': False,  # ✅ Set to False
+                    'company_setup_completed': company_setup_completed,
+                    'profile_completed': profile_completed,
+                    'role': user_role,  # ✅ THIS IS THE KEY LINE!
+                }
+            }
+        }
+
+        print(f"\n✅ PASSWORD CHANGED SUCCESSFULLY")
+        print(f"Response Role: {user_role}")
+        print(f"Response Temp Password: {False}")
+        print("="*80 + "\n")
+
+        return Response(response_data, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated], url_path='company_setup')
     def company_setup(self, request):
@@ -535,7 +588,7 @@ class AuthViewSet(viewsets.ViewSet):
                         'id': user_id,
                         'email': personal_email,
                         'name': name,
-                        'role': 'hr_manager',
+                        'role': 'hr',
                         'company_id': company.id,
                         'temp_password': True,
                         'profile_completed': False,
@@ -648,7 +701,7 @@ class AuthViewSet(viewsets.ViewSet):
                         'id': user_id,
                         'name': name,
                         'email': personal_email,
-                        'role': 'hr_manager',
+                        'role': 'hr',
                         'company_id': str(company.id),
                         'company_name': company.name,
                         'login_email': personal_email,
@@ -665,6 +718,293 @@ class AuthViewSet(viewsets.ViewSet):
             return Response(
                 {'success': False, 'error': f'Failed to add HR Manager: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated], url_path='add_manager')
+    def add_manager(self, request):
+        """
+        Add Manager / HR / Employee from Admin (after setup)
+        - Accepts: name, email, role
+        - Creates Django auth.User
+        - Creates UsersAppUser with that role
+        - Sends temp password to given email
+        """
+        try:
+            print("\n" + "=" * 80)
+            print("➕ ADD MANAGER / HR / EMPLOYEE")
+            print("=" * 80)
+            
+            # DEBUG 1: Check authentication
+            print(f"\n[DEBUG 1] Authentication Check:")
+            print(f"  User authenticated: {request.user.is_authenticated}")
+            print(f"  User email: {request.user.email}")
+            print(f"  User ID: {request.user.id}")
+            
+            # DEBUG 2: Check company admin
+            print(f"\n[DEBUG 2] Getting Company Admin:")
+            try:
+                company_admin = CompanyAdmin.objects.get(user=request.user)
+                company = company_admin.company
+                print(f"  ✓ CompanyAdmin found: {company_admin.full_name}")
+                print(f"  ✓ Company: {company.name}")
+            except CompanyAdmin.DoesNotExist:
+                print(f"  ✗ CompanyAdmin NOT found for user {request.user.email}")
+                return Response(
+                    {'success': False, 'error': 'Company admin not found'},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            
+            # DEBUG 3: Check request data
+            print(f"\n[DEBUG 3] Request Data:")
+            print(f"  Raw request.data: {request.data}")
+            print(f"  Type: {type(request.data)}")
+            
+            name = (request.data.get('name') or "").strip()
+            email = (request.data.get('email') or "").strip().lower()
+            role = (request.data.get('role') or "").strip().lower()
+            
+            print(f"  Parsed name: '{name}' (length: {len(name)})")
+            print(f"  Parsed email: '{email}' (length: {len(email)})")
+            print(f"  Parsed role: '{role}' (length: {len(role)})")
+            
+            # DEBUG 4: Validate required fields
+            print(f"\n[DEBUG 4] Field Validation:")
+            if not name:
+                print(f"  ✗ Name is empty")
+                return Response(
+                    {'success': False, 'error': 'Name is required'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            print(f"  ✓ Name provided")
+            
+            if not email:
+                print(f"  ✗ Email is empty")
+                return Response(
+                    {'success': False, 'error': 'Email is required'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            print(f"  ✓ Email provided")
+            
+            if not role:
+                print(f"  ✗ Role is empty")
+                return Response(
+                    {'success': False, 'error': 'Role is required'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            print(f"  ✓ Role provided")
+            
+            # DEBUG 5: Validate role value
+            print(f"\n[DEBUG 5] Role Validation:")
+            valid_roles = ['manager', 'hr', 'employee']
+            print(f"  Valid roles: {valid_roles}")
+            print(f"  Provided role: '{role}'")
+            
+            if role not in valid_roles:
+                print(f"  ✗ Role '{role}' not in valid roles")
+                return Response(
+                    {'success': False, 'error': f'Invalid role. Use {", ".join(valid_roles)}.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            print(f"  ✓ Role '{role}' is valid")
+            
+            # DEBUG 6: Email format validation
+            print(f"\n[DEBUG 6] Email Format Validation:")
+            email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            print(f"  Pattern: {email_pattern}")
+            print(f"  Email: {email}")
+            
+            if not re.match(email_pattern, email):
+                print(f"  ✗ Email format invalid")
+                return Response(
+                    {'success': False, 'error': 'Invalid email format'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            print(f"  ✓ Email format valid")
+            
+            # DEBUG 7: Check for duplicates
+            print(f"\n[DEBUG 7] Checking for Duplicates:")
+            print(f"  Checking Django auth_user table...")
+            django_user_exists = User.objects.filter(username=email).exists()
+            print(f"    Django User exists: {django_user_exists}")
+            
+            if django_user_exists:
+                print(f"  ✗ DUPLICATE: Django User with username '{email}' already exists")
+                return Response(
+                    {'success': False, 'error': f'Email {email} is already registered'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            
+            print(f"  Checking UsersAppUser table...")
+            app_user_exists = UsersAppUser.objects.filter(email=email).exists()
+            print(f"    UsersAppUser exists: {app_user_exists}")
+            
+            if app_user_exists:
+                print(f"  ✗ DUPLICATE: UsersAppUser with email '{email}' already exists")
+                return Response(
+                    {'success': False, 'error': f'Email {email} is already registered in system'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            
+            print(f"  ✓ No duplicates found")
+            
+            # DEBUG 8: Check database connection
+            print(f"\n[DEBUG 8] Database Connection Check:")
+            try:
+                total_users_django = User.objects.count()
+                total_users_app = UsersAppUser.objects.count()
+                print(f"  ✓ Django User count: {total_users_django}")
+                print(f"  ✓ UsersAppUser count: {total_users_app}")
+            except Exception as db_err:
+                print(f"  ✗ Database error: {str(db_err)}")
+                return Response(
+                    {'success': False, 'error': f'Database connection error: {str(db_err)}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+            
+            # DEBUG 9: Generate credentials
+            print(f"\n[DEBUG 9] Generating Credentials:")
+            temp_password = secrets.token_urlsafe(12)
+            user_id = str(uuid.uuid4())
+            print(f"  User ID: {user_id}")
+            print(f"  Temp Password: {temp_password[:8]}...")
+            print(f"  Login Email: {email}")
+            
+            # DEBUG 10: Check UsersAppUser model fields
+            print(f"\n[DEBUG 10] UsersAppUser Model Fields:")
+            allowed_field_names = {f.name for f in UsersAppUser._meta.fields}
+            print(f"  Available fields: {allowed_field_names}")
+            
+            user_create_kwargs = {
+                'id': user_id,
+                'email': email,
+                'name': name,
+                'role': role,
+                'company_id': company.id,
+                'temp_password': True,
+                'profile_completed': False,
+                'is_active': True,
+                'status': 'active',
+                'employee_type': 'permanent',
+            }
+            
+            print(f"\n  Prepared kwargs:")
+            for k, v in user_create_kwargs.items():
+                print(f"    - {k}: {v}")
+            
+            filtered_kwargs = {
+                k: v
+                for k, v in user_create_kwargs.items()
+                if k in allowed_field_names and v is not None
+            }
+            
+            print(f"\n  After filtering (only valid fields):")
+            for k, v in filtered_kwargs.items():
+                print(f"    - {k}: {v}")
+            
+            # DEBUG 11: Create transaction
+            print(f"\n[DEBUG 11] Starting Transaction:")
+            try:
+                with transaction.atomic():
+                    print(f"  Transaction started...")
+                    
+                    # Create Django user
+                    print(f"\n  Creating Django User...")
+                    django_user = User.objects.create_user(
+                        username=email,
+                        email=email,
+                        password=temp_password,
+                        first_name=name.split()[0] if name.split() else 'User',
+                        last_name=' '.join(name.split()[1:]) if len(name.split()) > 1 else '',
+                        date_joined=timezone.now(),
+                    )
+                    print(f"    ✓ Django User created with ID: {django_user.id}")
+                    
+                    # Create UsersAppUser
+                    print(f"\n  Creating UsersAppUser...")
+                    print(f"    Kwargs: {filtered_kwargs}")
+                    
+                    supabase_user = UsersAppUser.objects.create(**filtered_kwargs)
+                    
+                    print(f"    ✓ UsersAppUser created with ID: {supabase_user.id}")
+                    
+                    # Hash password if supported
+                    if hasattr(supabase_user, "set_password"):
+                        supabase_user.set_password(temp_password)
+                        supabase_user.save()
+                        print(f"    ✓ Password hashed")
+                    
+                    print(f"\n  ✓ Transaction committed successfully")
+                    
+            except IntegrityError as ie:
+                error_str = str(ie)
+                print(f"  ✗ IntegrityError: {error_str}")
+                return Response(
+                    {'success': False, 'error': f'Database constraint violation: {error_str}'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            except Exception as exc:
+                print(f"  ✗ Transaction error: {str(exc)}")
+                import traceback
+                traceback.print_exc()
+                return Response(
+                    {'success': False, 'error': f'Failed to create user: {str(exc)}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+            
+            # DEBUG 12: Send email
+            print(f"\n[DEBUG 12] Sending Email:")
+            try:
+                print(f"  Attempting to send email to {email}...")
+                CompanyEmailService.send_hr_invitation(
+                    personal_email=email,
+                    company_name=company.name,
+                    hr_email=email,
+                    temp_password=temp_password,
+                )
+                email_sent = True
+                print(f"  ✓ Email sent successfully")
+            except Exception as e:
+                print(f"  ✗ Email sending failed: {str(e)}")
+                email_sent = False
+            
+            # DEBUG 13: Success response
+            print(f"\n[DEBUG 13] Success Response:")
+            message = f"User {name} created successfully as {role}."
+            if not email_sent:
+                message += " (Note: Email delivery failed)"
+            
+            print(f"  Message: {message}")
+            print(f"  Response data prepared")
+            
+            print(f"\n✅ OPERATION COMPLETED SUCCESSFULLY")
+            print("=" * 80 + "\n")
+            
+            return Response(
+                {
+                    'success': True,
+                    'message': message,
+                    'data': {
+                        'id': user_id,
+                        'name': name,
+                        'email': email,
+                        'role': role,
+                        'company_id': str(company.id),
+                        'company_name': company.name,
+                    },
+                },
+                status=status.HTTP_201_CREATED,
+            )
+            
+        except Exception as e:
+            print(f"\n❌ CRITICAL ERROR: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            print("=" * 80 + "\n")
+            
+            return Response(
+                {'success': False, 'error': f'Failed to add user: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
     @action(detail=False, methods=['get', 'put'], url_path='appearance')
