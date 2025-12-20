@@ -67,6 +67,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 import { departmentRest, userRest } from '@/services/api';
+// ✅ RBAC IMPORTS
+import { getPageButtonVisibility } from '@/utils/roles';
+import { useAuth } from '@/contexts/AuthContext';
+
 
 // ✅ INTERFACES
 interface Department {
@@ -103,12 +107,20 @@ const Employees: React.FC = () => {
   const [isAddEmployeeModalOpen, setIsAddEmployeeModalOpen] = useState(false);
   const [isAddHRModalOpen, setIsAddHRModalOpen] = useState(false);
   const [isAddDepartmentModalOpen, setIsAddDepartmentModalOpen] = useState(false);
+  
+
 
   // STATE
   const [departments, setDepartments] = useState<Department[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const { user } = useAuth(); // ✅ GET USER WITH ROLE
+
+  // ✅ GET BUTTON VISIBILITY BASED ON ROLE
+  const { showAddEmployee, showAddDepartment, showAddManager } = 
+  getPageButtonVisibility(user?.role);
+
 
   const [deptForm, setDeptForm] = useState({
     name: '',
@@ -371,22 +383,27 @@ const Employees: React.FC = () => {
           {/* Action Buttons + View Toggle */}
           <div className="flex flex-col md:flex-row gap-3 justify-between">
             <div className="flex flex-wrap gap-3">
+            {showAddEmployee && (
               <Button
                 onClick={() => setIsAddEmployeeModalOpen(true)}
-                className="gap-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all"
+                className="gap-2 bg-gradient-to-r from-blue-500 to-blue-600..."
               >
                 <Plus className="h-4 w-4" />
                 Add Employee
               </Button>
+            )}
 
+            {showAddManager && (
               <Button
                 onClick={() => setIsAddHRModalOpen(true)}
-                className="gap-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all"
+                className="gap-2 bg-gradient-to-r from-purple-500 to-purple-600..."
               >
                 <UserPlus className="h-4 w-4" />
                 Add HR/Manager
               </Button>
+            )}
 
+            {showAddDepartment && (
               <Button
                 onClick={() => setIsAddDepartmentModalOpen(true)}
                 variant="outline"
@@ -395,7 +412,8 @@ const Employees: React.FC = () => {
                 <Briefcase className="h-4 w-4" />
                 Add Department
               </Button>
-            </div>
+            )}
+          </div>
 
             <div className="flex border rounded-lg overflow-hidden self-start">
               <Button
@@ -487,18 +505,20 @@ const Employees: React.FC = () => {
                                       </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                      <DropdownMenuItem>
-                                        <Eye className="h-4 w-4 mr-2" /> View
-                                        Profile
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem>
-                                        <Edit className="h-4 w-4 mr-2" /> Edit
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem className="text-destructive">
-                                        <Trash2 className="h-4 w-4 mr-2" />{' '}
-                                        Delete
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
+                                    <DropdownMenuItem>
+                                      <Eye className="h-4 w-4 mr-2" /> View Profile
+                                    </DropdownMenuItem>
+                                    {(user?.role === 'comapny_admin' || user?.role === 'hr') && (
+                                      <>
+                                        <DropdownMenuItem>
+                                          <Edit className="h-4 w-4 mr-2" /> Edit
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem className="text-destructive">
+                                          <Trash2 className="h-4 w-4 mr-2" /> Delete
+                                        </DropdownMenuItem>
+                                      </>
+                                    )}
+                                  </DropdownMenuContent>
                                   </DropdownMenu>
                                 </div>
 
@@ -667,19 +687,23 @@ const Employees: React.FC = () => {
                                   )}
                                 </td>
                                 <td className="p-4">
-                                  <div className="flex gap-2">
-                                    <Button variant="ghost" size="icon">
-                                      <Eye className="h-4 w-4" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon">
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon">
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </td>
-                              </motion.tr>
+                                <div className="flex gap-2">
+                                  <Button variant="ghost" size="icon">
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                  {(user?.role === 'admin' || user?.role === 'hr') && (
+                                    <>
+                                      <Button variant="ghost" size="icon">
+                                        <Edit className="h-4 w-4" />
+                                      </Button>
+                                      <Button variant="ghost" size="icon">
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </>
+                                  )}
+                                </div>
+                              </td>
+                            </motion.tr>
                             ))}
                           </tbody>
                         </table>

@@ -134,24 +134,6 @@ class CompanyAdmin(models.Model):
         help_text="Whether company setup wizard has been completed"
     )
     setup_completed_at = models.DateTimeField(null=True, blank=True)
-    
-    # Company Information (filled during setup)
-    company_name = models.CharField(max_length=255, null=True, blank=True)
-    company_website = models.URLField(null=True, blank=True)
-    company_industry = models.CharField(max_length=100, null=True, blank=True)
-    timezone = models.CharField(max_length=50, default='IST')
-    currency = models.CharField(max_length=10, default='INR')
-    
-    # Employee & Working Info
-    total_employees = models.IntegerField(default=0)
-    working_hours_start = models.TimeField(default='09:00')
-    working_hours_end = models.TimeField(default='18:00')
-    
-    # Leave Structure
-    casual_leave_days = models.IntegerField(default=12)
-    sick_leave_days = models.IntegerField(default=6)
-    personal_leave_days = models.IntegerField(default=2)
-    # ==========================================
 
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
@@ -205,6 +187,120 @@ class CompanyRegistrationToken(models.Model):
     def generate_temp_password():
         import secrets
         return secrets.token_urlsafe(12)
+    
+
+# ============================================
+# COMPANY DETAILS MODEL
+# ============================================
+
+
+class CompanyDetails(models.Model):
+    """
+    Store detailed company configuration including work type, hours, and leave policy
+    
+    One-to-one relationship with Company table
+    Single source of truth for company work configuration
+    """
+    
+    WORK_TYPE_CHOICES = [
+        ('fixed_hours', 'Fixed Working Hours'),
+        ('shift_based', 'Shift Based'),
+    ]
+    
+    # Primary Key
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    
+    # Relationship
+    company = models.OneToOneField(
+        Company,
+        on_delete=models.CASCADE,
+        related_name='details'
+    )
+    
+    # Employee & Working Info
+    total_employees = models.IntegerField(default=1)
+    
+    # Work Type: 'fixed_hours' or 'shift_based'
+    work_type = models.CharField(
+        max_length=20,
+        choices=WORK_TYPE_CHOICES,
+        default='fixed_hours',
+        help_text='Type of work arrangement'
+    )
+    
+    # Fixed Hours (used when work_type = 'fixed_hours')
+    start_time = models.TimeField(
+        null=True,
+        blank=True,
+        help_text='Work start time (HH:MM format)'
+    )
+    end_time = models.TimeField(
+        null=True,
+        blank=True,
+        help_text='Work end time (HH:MM format)'
+    )
+    
+    # Shift Based (used when work_type = 'shift_based')
+    shift_duration_minutes = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text='Total shift duration in minutes'
+    )
+    
+    # Break Configuration
+    break_minutes = models.IntegerField(
+        default=60,
+        help_text='Break time in minutes (default 60)'
+    )
+    
+    # Leave Structure (Per Year)
+    casual_leave_days = models.IntegerField(default=0)
+    sick_leave_days = models.IntegerField(default=0)
+    personal_leave_days = models.IntegerField(default=0)
+    
+    # Future Expandable Fields
+    overtime_allowed = models.BooleanField(default=False)
+    max_overtime_minutes = models.IntegerField(null=True, blank=True)
+    weekend_work_allowed = models.BooleanField(default=False)
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'company_details'
+        verbose_name = 'Company Details'
+        verbose_name_plural = 'Company Details'
+        constraints = [
+            models.UniqueConstraint(fields=['company'], name='unique_company_details'),
+        ]
+    
+    def __str__(self):
+        return f"{self.company.name} - {self.get_work_type_display()}"
+    
+    def clean(self):
+        """Validate work type specific requirements"""
+        from django.core.exceptions import ValidationError
+        
+        if self.work_type == 'fixed_hours':
+            if not self.start_time or not self.end_time:
+                raise ValidationError(
+                    'Start time and end time are required for fixed hours work type'
+                )
+            if self.shift_duration_minutes is not None:
+                raise ValidationError(
+                    'Shift duration should be null for fixed hours work type'
+                )
+        
+        elif self.work_type == 'shift_based':
+            if not self.shift_duration_minutes or self.shift_duration_minutes <= 0:
+                raise ValidationError(
+                    'Shift duration (in minutes) is required and must be > 0 for shift-based work type'
+                )
+            if self.start_time is not None or self.end_time is not None:
+                raise ValidationError(
+                    'Start time and end time should be null for shift-based work type'
+                    )
     
 # ============================================
 # DEPARTMENT MODEL

@@ -437,11 +437,14 @@ class AuthViewSet(viewsets.ViewSet):
             # Update company info
             company.name = validated_data.get('companyname', company.name)
             company.website = validated_data.get('companywebsite', company.website or '')
+            company.company_industry = validated_data.get('companyindustry')
+            company.timezone = validated_data.get('timezone', 'Asia/Kolkata')
+            company.currency = validated_data.get('currency', 'INR')
             company.save()
             print(f"✓ Company updated: {company.name}")
 
             # ============================================
-            # CREATE/UPDATE COMPANYDETAILS TABLE (NEW)
+            # CREATE/UPDATE COMPANYDETAILS TABLE
             # ============================================
             
             print(f"\n✨ Creating/Updating CompanyDetails...")
@@ -476,26 +479,13 @@ class AuthViewSet(viewsets.ViewSet):
             print(f"✓ CompanyDetails {'created' if created else 'updated'}")
 
             # ============================================
-            # UPDATE COMPANYADMIN (FOR BACKWARD COMPATIBILITY)
+            # UPDATE COMPANYADMIN (ONLY ADMIN INFO)
             # ============================================
-            
-            company_admin.company_name = validated_data.get('companyname')
-            company_admin.company_website = validated_data.get('companywebsite', '')
-            company_admin.company_industry = validated_data.get('companyindustry', '')
-            company_admin.timezone = validated_data.get('timezone', 'IST')
-            company_admin.currency = validated_data.get('currency', 'INR')
-            company_admin.total_employees = validated_data.get('totalemployees', 0)
-            company_admin.working_hours_start = validated_data.get('workinghoursstart')
-            company_admin.working_hours_end = validated_data.get('workinghoursend')
-            company_admin.casual_leave_days = validated_data.get('casualleavedays', 12)
-            company_admin.sick_leave_days = validated_data.get('sickleavedays', 6)
-            company_admin.personal_leave_days = validated_data.get('personalleavedays', 2)
             
             # Mark setup as completed
             company_admin.company_setup_completed = True
             company_admin.setup_completed_at = timezone.now()
             company_admin.save()
-
             print(f"✓ CompanyAdmin updated")
             print(f"✓ Setup completed at: {company_admin.setup_completed_at}")
             print("="*80 + "\n")
@@ -525,6 +515,7 @@ class AuthViewSet(viewsets.ViewSet):
                 'success': False,
                 'error': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
 
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated], url_path='add_hr')
     def add_hr(self, request):
