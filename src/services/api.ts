@@ -1,16 +1,14 @@
-// workos/src/services/api.ts - UNIFIED ENDPOINTS
-
 import type { Room, Message } from "@/types/chat";
 
 // Use backend URL from environment or default
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 /**
-* authHeaders()
-* - Prefer the new key 'access_token' stored by AuthContext.
-* - Fallback to legacy 'token' if present (keeps backwards compatibility).
-* - Returns an object suitable for fetch headers: { Authorization: 'Bearer ...' }
-*/
+ * authHeaders()
+ * - Prefer the new key 'access_token' stored by AuthContext.
+ * - Fallback to legacy 'token' if present (keeps backwards compatibility).
+ * - Returns an object suitable for fetch headers: { Authorization: 'Bearer ...' }
+ */
 function authHeaders() {
   // primary key used by AuthContext
   const accessToken = localStorage.getItem("access_token");
@@ -28,11 +26,10 @@ function authHeaders() {
 }
 
 /* ---------------------------
-Chat API helpers
---------------------------- */
-
+   Chat API helpers
+   --------------------------- */
 export const chatRest = {
-  async getRooms(): Promise {
+  async getRooms(): Promise<Room[]> {
     const res = await fetch(`${API}/api/chat/rooms/`, {
       headers: { ...authHeaders() },
     });
@@ -41,8 +38,7 @@ export const chatRest = {
     }
     return res.json();
   },
-
-  async getRoomMessages(roomId: string): Promise {
+  async getRoomMessages(roomId: string): Promise<Message[]> {
     const res = await fetch(`${API}/api/chat/rooms/${roomId}/messages/`, {
       headers: { ...authHeaders() },
     });
@@ -51,7 +47,6 @@ export const chatRest = {
     }
     return res.json();
   },
-
   async postMessage(roomId: string, content: string) {
     const res = await fetch(`${API}/api/chat/rooms/${roomId}/messages/`, {
       method: "POST",
@@ -70,9 +65,8 @@ export const chatRest = {
 };
 
 /* ---------------------------
-Auth & user helpers - UNIFIED
---------------------------- */
-
+   Auth & user helpers - UNIFIED
+   --------------------------- */
 export const authRest = {
   // ✅ UNIFIED LOGIN ENDPOINT FOR ALL USERS (Admin + HR/Manager/Employee)
   async login(email: string, password: string) {
@@ -83,19 +77,14 @@ export const authRest = {
       },
       body: JSON.stringify({ email, password }),
     });
-
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || "Login failed");
     }
-
     return res.json();
   },
 
-  // ✅ UNIFIED CHANGE TEMP PASSWORD ENDPOINT FOR ALL USERS (Admin + HR/Manager/Employee)
-  // Updates:
-  // - CompanyAdmin.temp_password_set for admin users
-  // - UsersAppUser.temp_password for HR/Manager/Employee users
+  // ✅ UNIFIED CHANGE TEMP PASSWORD ENDPOINT FOR ALL USERS
   async changeTempPassword(oldPassword: string, newPassword: string) {
     const res = await fetch(`${API}/api/auth/change_temp_password/`, {
       method: "POST",
@@ -108,12 +97,10 @@ export const authRest = {
         new_password: newPassword,
       }),
     });
-
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || "Failed to change password");
     }
-
     return res.json();
   },
 
@@ -127,17 +114,14 @@ export const authRest = {
       },
       body: JSON.stringify(payload),
     });
-
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || "Company setup failed");
     }
-
     return res.json();
   },
 
   // ✅ ADD HR MANAGER
-  // Uses authHeaders() for token retrieval (access_token preferred)
   async addHR(name: string, email: string) {
     const res = await fetch(`${API}/api/auth/add_hr/`, {
       method: "POST",
@@ -147,35 +131,31 @@ export const authRest = {
       },
       body: JSON.stringify({ name, email }),
     });
-
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || "Failed to add HR");
     }
-
     return res.json();
   },
 
   // ✅ ADD MANAGER
   async addManager(name: string, email: string, role: string) {
-  const res = await fetch(`${API}/api/auth/add_manager/`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders(),
-    },
-    body: JSON.stringify({ name, email, role }),
+    const res = await fetch(`${API}/api/auth/add_manager/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders(),
+      },
+      body: JSON.stringify({ name, email, role }),
     });
-
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || "Failed to add manager");
     }
-
     return res.json();
   },
 
-  // Logout on backend if you have an endpoint
+  // Logout
   async logout() {
     const res = await fetch(`${API}/api/auth/logout/`, {
       method: "POST",
@@ -184,23 +164,18 @@ export const authRest = {
         ...authHeaders(),
       },
     });
-
     if (!res.ok) {
-      // ignore errors in logout for now
       return;
     }
-
     return res.json();
   },
 };
 
 /* ---------------------------
-Users helpers
---------------------------- */
-
+   Users helpers
+   --------------------------- */
 export const usersRest = {
-  // ✅ COMPLETE PROFILE ENDPOINT FOR HR/Manager/Employee
-  // Path: POST /api/users/complete_profile/
+  // ✅ COMPLETE PROFILE ENDPOINT
   async completeProfile(data: {
     full_name?: string;
     phone?: string;
@@ -224,26 +199,200 @@ export const usersRest = {
       },
       body: JSON.stringify(data),
     });
-
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || "Failed to complete profile");
     }
-
     return res.json();
   },
 
-  // List HR Users (company) - optional helper
+  // List HR Users
   async listHR() {
     const res = await fetch(`${API}/api/users/company_hrs/`, {
       headers: { ...authHeaders() },
     });
-
     if (!res.ok) {
       throw new Error("Failed to fetch HR users");
     }
-
     return res.json();
+  },
+};
+
+/* ---------------------------
+   ✅ Department Management (FIXED WITH ERROR HANDLING)
+   --------------------------- */
+export const departmentRest = {
+  async addDepartment(data: {
+    name: string;
+    code: string;
+    description: string;
+  }) {
+    try {
+      console.log('📤 Sending department data:', data);
+      
+      const res = await fetch(`${API}/api/users/add_department/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeaders(),
+        },
+        body: JSON.stringify({
+          name: data.name.trim(),
+          code: data.code.trim().toUpperCase(),
+          description: data.description.trim(),
+        }),
+      });
+
+      const result = await res.json();
+      console.log('📨 Response:', result);
+
+      if (!res.ok) {
+        return {
+          success: false,
+          error: result.error || "Failed to add department",
+          errors: result.errors,
+        };
+      }
+
+      return {
+        success: result.success !== false,
+        data: result.data || result,
+        error: result.error,
+      };
+    } catch (error: any) {
+      console.error('❌ Exception:', error);
+      return {
+        success: false,
+        error: error.message || "Failed to add department",
+      };
+    }
+  },
+
+  async listDepartments() {
+    try {
+      console.log('📥 Fetching departments...');
+      
+      const res = await fetch(`${API}/api/users/list_departments/`, {
+        method: "GET",
+        headers: {
+          ...authHeaders(),
+        },
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return {
+          success: false,
+          data: [],
+          error: err.error || "Failed to fetch departments",
+        };
+      }
+
+      const result = await res.json();
+      console.log('✅ Departments fetched:', result);
+      
+      return {
+        success: result.success !== false,
+        data: result.data || result,
+        error: result.error,
+      };
+    } catch (error: any) {
+      console.error('❌ Exception:', error);
+      return {
+        success: false,
+        data: [],
+        error: error.message || "Failed to fetch departments",
+      };
+    }
+  },
+};
+
+/* ---------------------------
+   ✅ Employee Management (FIXED WITH ERROR HANDLING)
+   --------------------------- */
+export const userRest = {
+  async addEmployee(data: {
+    name: string;
+    email: string;
+    role: "employee" | "team_lead";
+    department_id: string;
+  }) {
+    try {
+      console.log('📤 Sending employee data:', data);
+      
+      const res = await fetch(`${API}/api/users/add_employee/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeaders(),
+        },
+        body: JSON.stringify({
+          name: data.name.trim(),
+          email: data.email.trim().toLowerCase(),
+          role: data.role,
+          department_id: data.department_id,
+        }),
+      });
+
+      const result = await res.json();
+      console.log('📨 Response:', result);
+
+      if (!res.ok) {
+        return {
+          success: false,
+          error: result.error || "Failed to add employee",
+          errors: result.errors,
+        };
+      }
+
+      return {
+        success: result.success !== false,
+        data: result.data || result,
+        error: result.error,
+      };
+    } catch (error: any) {
+      console.error('❌ Exception:', error);
+      return {
+        success: false,
+        error: error.message || "Failed to add employee",
+      };
+    }
+  },
+
+   async listEmployees() {
+    try {
+      const res = await fetch(`${API}/api/users/list_employees/`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeaders(),
+        },
+      });
+
+      const result = await res.json();
+      console.log("📨 Employees list response:", result);
+
+      if (!res.ok) {
+        return {
+          success: false,
+          data: [],
+          error: result.error || "Failed to fetch employees",
+        };
+      }
+
+      return {
+        success: result.success !== false,
+        data: result.data || result,
+        error: result.error,
+      };
+    } catch (error: any) {
+      console.error("❌ Error fetching employees:", error);
+      return {
+        success: false,
+        data: [],
+        error: error.message || "Failed to fetch employees",
+      };
+    }
   },
 };
 
@@ -251,4 +400,6 @@ export default {
   authRest,
   usersRest,
   chatRest,
+  departmentRest,
+  userRest,
 };

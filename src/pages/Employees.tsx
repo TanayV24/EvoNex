@@ -1,6 +1,4 @@
-// src/pages/Employees.tsx
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Header } from '@/components/layout/Header';
@@ -58,6 +56,7 @@ import {
   Eye,
   UserPlus,
   Briefcase,
+  Users,
 } from 'lucide-react';
 
 import {
@@ -67,81 +66,29 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-// ORIGINAL MOCK EMPLOYEES (card layout)
-const mockEmployees = [
-  {
-    id: '1',
-    name: 'John Doe',
-    email: 'john.doe@company.com',
-    phone: '+1 234 567 890',
-    department: 'Engineering',
-    designation: 'Senior Developer',
-    status: 'active',
-    joinDate: '2022-03-15',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=John',
-    location: 'New York',
-  },
-  {
-    id: '2',
-    name: 'Sarah Smith',
-    email: 'sarah.smith@company.com',
-    phone: '+1 234 567 891',
-    department: 'Design',
-    designation: 'UI/UX Lead',
-    status: 'active',
-    joinDate: '2021-08-22',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah',
-    location: 'San Francisco',
-  },
-  {
-    id: '3',
-    name: 'Mike Johnson',
-    email: 'mike.j@company.com',
-    phone: '+1 234 567 892',
-    department: 'Marketing',
-    designation: 'Marketing Manager',
-    status: 'on-leave',
-    joinDate: '2020-01-10',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Mike',
-    location: 'Chicago',
-  },
-  {
-    id: '4',
-    name: 'Emily Brown',
-    email: 'emily.b@company.com',
-    phone: '+1 234 567 893',
-    department: 'HR',
-    designation: 'HR Specialist',
-    status: 'active',
-    joinDate: '2023-05-01',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Emily',
-    location: 'Boston',
-  },
-  {
-    id: '5',
-    name: 'David Wilson',
-    email: 'david.w@company.com',
-    phone: '+1 234 567 894',
-    department: 'Finance',
-    designation: 'Financial Analyst',
-    status: 'inactive',
-    joinDate: '2019-11-20',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=David',
-    location: 'Seattle',
-  },
-  {
-    id: '6',
-    name: 'Lisa Anderson',
-    email: 'lisa.a@company.com',
-    phone: '+1 234 567 895',
-    department: 'Engineering',
-    designation: 'DevOps Engineer',
-    status: 'active',
-    joinDate: '2022-09-05',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Lisa',
-    location: 'Austin',
-  },
-];
+import { departmentRest, userRest } from '@/services/api';
+
+// ✅ INTERFACES
+interface Department {
+  id: string;
+  name: string;
+  code: string;
+  description: string;
+  head_id?: number;
+}
+
+interface Employee {
+  id: string | number;
+  name: string;
+  email: string;
+  phone?: string;
+  department?: string;
+  designation?: string;
+  status?: 'active' | 'inactive' | 'on-leave';
+  joinDate?: string;
+  avatar?: string;
+  location?: string;
+}
 
 const statusColors: Record<string, 'success' | 'destructive' | 'warning'> = {
   active: 'success',
@@ -155,18 +102,69 @@ const Employees: React.FC = () => {
   const [selectedDepartment, setSelectedDepartment] = useState('all');
   const [isAddEmployeeModalOpen, setIsAddEmployeeModalOpen] = useState(false);
   const [isAddHRModalOpen, setIsAddHRModalOpen] = useState(false);
-  const [isAddDepartmentModalOpen, setIsAddDepartmentModalOpen] =
-    useState(false);
+  const [isAddDepartmentModalOpen, setIsAddDepartmentModalOpen] = useState(false);
 
-  const [newEmployee, setNewEmployee] = useState({
+  // STATE
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const [deptForm, setDeptForm] = useState({
+    name: '',
+    code: '',
+    description: '',
+  });
+
+  const [empForm, setEmpForm] = useState({
     name: '',
     email: '',
     phone: '',
     department: '',
     designation: '',
+    role: 'employee',
   });
 
-  const filteredEmployees = mockEmployees.filter((emp) => {
+  // LOAD DATA ON MOUNT
+  useEffect(() => {
+    loadDepartments();
+    loadEmployees();
+  }, []);
+
+  // LOAD DEPARTMENTS
+  const loadDepartments = async () => {
+    try {
+      const response = await departmentRest.listDepartments();
+      if (response.success) {
+        setDepartments(response.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to load departments');
+    }
+  };
+
+  // ✅ LOAD EMPLOYEES FROM API (NEW FUNCTION)
+  const loadEmployees = async () => {
+    try {
+      setLoading(true);
+      const response = await userRest.listEmployees();
+      if (response.success) {
+        console.log('✅ Employees loaded:', response.data);
+        setEmployees(response.data || []);
+      } else {
+        console.error('Failed to load employees:', response.error);
+        setEmployees([]);
+      }
+    } catch (err) {
+      console.error('Error loading employees:', err);
+      setEmployees([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // FILTER EMPLOYEES (NOW USES API DATA)
+  const filteredEmployees = employees.filter((emp) => {
     const matchesSearch =
       emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       emp.email.toLowerCase().includes(searchQuery.toLowerCase());
@@ -177,10 +175,106 @@ const Employees: React.FC = () => {
     return matchesSearch && matchesDepartment;
   });
 
-  const departments = ['all', ...new Set(mockEmployees.map((e) => e.department))];
+  // Generate departments list from actual employees
+  const departments_list = [
+    'all',
+    ...new Set(employees.map((e) => e.department || 'Unassigned')),
+  ];
 
-  const handleAddEmployee = () => {
-    if (!newEmployee.name || !newEmployee.email) {
+  // ADD DEPARTMENT
+  const handleAddDepartment = async () => {
+    setError('');
+
+    if (
+      !deptForm.name.trim() ||
+      !deptForm.code.trim() ||
+      !deptForm.description.trim()
+    ) {
+      setError('All fields required');
+      toast({
+        title: 'Error',
+        description: 'All fields are required',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (deptForm.name.trim().length < 2) {
+      setError('Name min 2 chars');
+      return;
+    }
+
+    if (
+      deptForm.code.trim().length < 3 ||
+      deptForm.code.trim().length > 4
+    ) {
+      setError('Code must be 3-4 chars');
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9]+$/.test(deptForm.code.trim())) {
+      setError('Code: alphanumeric only');
+      return;
+    }
+
+    if (deptForm.description.trim().length < 5) {
+      setError('Description min 5 chars');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      console.log('🚀 Creating department...');
+      console.log('Data:', {
+        name: deptForm.name.trim(),
+        code: deptForm.code.trim().toUpperCase(),
+        description: deptForm.description.trim(),
+      });
+
+      const response = await departmentRest.addDepartment({
+        name: deptForm.name.trim(),
+        code: deptForm.code.trim().toUpperCase(),
+        description: deptForm.description.trim(),
+      });
+
+      console.log('Response:', response);
+
+      if (response.success) {
+        toast({
+          title: 'Success',
+          description: `Department "${deptForm.name}" created!`,
+        });
+        setDeptForm({ name: '', code: '', description: '' });
+        setIsAddDepartmentModalOpen(false);
+        loadDepartments();
+      } else {
+        const msg =
+          response.error ||
+          (response.errors ? JSON.stringify(response.errors) : 'Failed');
+        console.error('Error:', msg);
+        setError(msg);
+        toast({
+          title: 'Error',
+          description: msg,
+          variant: 'destructive',
+        });
+      }
+    } catch (err: any) {
+      console.error('Exception:', err);
+      setError(err.message || 'Failed');
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ ADD EMPLOYEE WITH DEPT (UPDATED)
+  const handleAddEmployeeWithDept = async () => {
+    if (!empForm.name || !empForm.email || !empForm.department) {
       toast({
         title: 'Error',
         description: 'Please fill in all required fields',
@@ -188,30 +282,59 @@ const Employees: React.FC = () => {
       });
       return;
     }
-    toast({
-      title: 'Employee Added',
-      description: `${newEmployee.name} has been added successfully`,
-    });
-    setIsAddEmployeeModalOpen(false);
-    setNewEmployee({
-      name: '',
-      email: '',
-      phone: '',
-      department: '',
-      designation: '',
-    });
+
+    setLoading(true);
+    try {
+      const response = await userRest.addEmployee({
+        name: empForm.name.trim(),
+        email: empForm.email.trim(),
+        role: empForm.role as 'employee' | 'team_lead',
+        department_id: empForm.department,
+      });
+
+      if (response.success) {
+        toast({
+          title: 'Success',
+          description: `Employee "${empForm.name}" created successfully! Email sent.`,
+        });
+        setEmpForm({
+          name: '',
+          email: '',
+          phone: '',
+          department: '',
+          designation: '',
+          role: 'employee',
+        });
+        setIsAddEmployeeModalOpen(false);
+        loadEmployees(); // ✅ RELOAD EMPLOYEES
+      } else {
+        toast({
+          title: 'Error',
+          description: response.error || 'Failed to create employee',
+          variant: 'destructive',
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to create employee',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <DashboardLayout>
-      {/* Sticky header from Header.tsx */}
+      {/* Header */}
       <Header
         title="Employees"
         subtitle="Manage and organize your team members"
       />
 
       <div className="px-4 pt-4 pb-8 space-y-6">
-        {/* Top actions: search + filters + 3 buttons */}
+        {/* Search + Filters + Buttons */}
         <div className="flex flex-col gap-4">
           {/* Search + Department Filter */}
           <div className="flex flex-col sm:flex-row gap-4">
@@ -235,10 +358,9 @@ const Employees: React.FC = () => {
                   <SelectValue placeholder="Department" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Departments</SelectItem>
-                  {departments.map((dept) => (
+                  {departments_list.map((dept) => (
                     <SelectItem key={dept} value={dept}>
-                      {dept}
+                      {dept === 'all' ? 'All Departments' : dept}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -246,10 +368,9 @@ const Employees: React.FC = () => {
             </div>
           </div>
 
-          {/* 3 main buttons + view toggle */}
+          {/* Action Buttons + View Toggle */}
           <div className="flex flex-col md:flex-row gap-3 justify-between">
             <div className="flex flex-wrap gap-3">
-              {/* Add Employee */}
               <Button
                 onClick={() => setIsAddEmployeeModalOpen(true)}
                 className="gap-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all"
@@ -258,7 +379,6 @@ const Employees: React.FC = () => {
                 Add Employee
               </Button>
 
-              {/* Add HR/Manager */}
               <Button
                 onClick={() => setIsAddHRModalOpen(true)}
                 className="gap-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all"
@@ -267,7 +387,6 @@ const Employees: React.FC = () => {
                 Add HR/Manager
               </Button>
 
-              {/* Add Department */}
               <Button
                 onClick={() => setIsAddDepartmentModalOpen(true)}
                 variant="outline"
@@ -278,7 +397,6 @@ const Employees: React.FC = () => {
               </Button>
             </div>
 
-            {/* Keep original grid/list toggle (optional) */}
             <div className="flex border rounded-lg overflow-hidden self-start">
               <Button
                 variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
@@ -298,7 +416,7 @@ const Employees: React.FC = () => {
           </div>
         </div>
 
-        {/* EMPLOYEE CARDS / LIST */}
+        {/* EMPLOYEE DISPLAY */}
         <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)}>
           <TabsList className="mb-4">
             <TabsTrigger value="grid">Grid View</TabsTrigger>
@@ -319,7 +437,9 @@ const Employees: React.FC = () => {
                       <div className="text-center py-12">
                         <Users className="w-12 h-12 mx-auto text-gray-400 mb-3" />
                         <p className="text-muted-foreground">
-                          No employees found matching your criteria
+                          {employees.length === 0
+                            ? 'No employees yet. Add one to get started!'
+                            : 'No employees found matching your criteria'}
                         </p>
                       </div>
                     ) : (
@@ -352,7 +472,7 @@ const Employees: React.FC = () => {
                                         {employee.name}
                                       </h3>
                                       <p className="text-sm text-muted-foreground">
-                                        {employee.designation}
+                                        {employee.designation || 'N/A'}
                                       </p>
                                     </div>
                                   </div>
@@ -389,37 +509,52 @@ const Employees: React.FC = () => {
                                       {employee.email}
                                     </span>
                                   </div>
-                                  <div className="flex items-center gap-2 text-muted-foreground">
-                                    <Phone className="h-4 w-4" />
-                                    <span>{employee.phone}</span>
-                                  </div>
-                                  <div className="flex items-center gap-2 text-muted-foreground">
-                                    <MapPin className="h-4 w-4" />
-                                    <span>{employee.location}</span>
-                                  </div>
-                                  <div className="flex items-center gap-2 text-muted-foreground">
-                                    <Calendar className="h-4 w-4" />
-                                    <span>Joined {employee.joinDate}</span>
-                                  </div>
+                                  {employee.phone && (
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                      <Phone className="h-4 w-4" />
+                                      <span>{employee.phone}</span>
+                                    </div>
+                                  )}
+                                  {employee.location && (
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                      <MapPin className="h-4 w-4" />
+                                      <span>{employee.location}</span>
+                                    </div>
+                                  )}
+                                  {employee.joinDate && (
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                      <Calendar className="h-4 w-4" />
+                                      <span>
+                                        Joined{' '}
+                                        {new Date(
+                                          employee.joinDate
+                                        ).toLocaleDateString()}
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
 
                                 <div className="mt-4 flex items-center justify-between">
-                                  <Badge
-                                    variant={
-                                      statusColors[
-                                        employee.status as keyof typeof statusColors
-                                      ]
-                                    }
-                                  >
-                                    {employee.status === 'on-leave'
-                                      ? 'On Leave'
-                                      : employee.status === 'inactive'
-                                      ? 'Inactive'
-                                      : 'Active'}
-                                  </Badge>
-                                  <Badge variant="ghost">
-                                    {employee.department}
-                                  </Badge>
+                                  {employee.status && (
+                                    <Badge
+                                      variant={
+                                        statusColors[
+                                          employee.status as keyof typeof statusColors
+                                        ] || 'success'
+                                      }
+                                    >
+                                      {employee.status === 'on-leave'
+                                        ? 'On Leave'
+                                        : employee.status === 'inactive'
+                                        ? 'Inactive'
+                                        : 'Active'}
+                                    </Badge>
+                                  )}
+                                  {employee.department && (
+                                    <Badge variant="ghost">
+                                      {employee.department}
+                                    </Badge>
+                                  )}
                                 </div>
                               </CardContent>
                             </Card>
@@ -441,125 +576,124 @@ const Employees: React.FC = () => {
               >
                 <Card variant="glass">
                   <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-border">
-                            <th className="text-left p-4 font-medium text-muted-foreground">
-                              Employee
-                            </th>
-                            <th className="text-left p-4 font-medium text-muted-foreground">
-                              Department
-                            </th>
-                            <th className="text-left p-4 font-medium text-muted-foreground">
-                              Location
-                            </th>
-                            <th className="text-left p-4 font-medium text-muted-foreground">
-                              Status
-                            </th>
-                            <th className="text-left p-4 font-medium text-muted-foreground">
-                              Actions
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filteredEmployees.map((employee, index) => (
-                            <motion.tr
-                              key={employee.id}
-                              initial={{ opacity: 0, x: -20 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: index * 0.05 }}
-                              className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors"
-                            >
-                              <td className="p-4">
-                                <div className="flex items-center gap-3">
-                                  <Avatar className="h-10 w-10">
-                                    <AvatarImage
-                                      src={employee.avatar}
-                                      alt={employee.name}
-                                    />
-                                    <AvatarFallback>
-                                      {employee.name.charAt(0)}
-                                    </AvatarFallback>
-                                  </Avatar>
+                    {filteredEmployees.length === 0 ? (
+                      <div className="text-center py-12">
+                        <p className="text-muted-foreground">
+                          {employees.length === 0
+                            ? 'No employees yet'
+                            : 'No employees found'}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-border">
+                              <th className="text-left p-4 font-medium text-muted-foreground">
+                                Employee
+                              </th>
+                              <th className="text-left p-4 font-medium text-muted-foreground">
+                                Department
+                              </th>
+                              <th className="text-left p-4 font-medium text-muted-foreground">
+                                Phone
+                              </th>
+                              <th className="text-left p-4 font-medium text-muted-foreground">
+                                Status
+                              </th>
+                              <th className="text-left p-4 font-medium text-muted-foreground">
+                                Actions
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredEmployees.map((employee, index) => (
+                              <motion.tr
+                                key={employee.id}
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: index * 0.05 }}
+                                className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors"
+                              >
+                                <td className="p-4">
+                                  <div className="flex items-center gap-3">
+                                    <Avatar className="h-10 w-10">
+                                      <AvatarImage
+                                        src={employee.avatar}
+                                        alt={employee.name}
+                                      />
+                                      <AvatarFallback>
+                                        {employee.name.charAt(0)}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                      <p className="font-medium">
+                                        {employee.name}
+                                      </p>
+                                      <p className="text-sm text-muted-foreground">
+                                        {employee.email}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="p-4">
                                   <div>
                                     <p className="font-medium">
-                                      {employee.name}
+                                      {employee.department || 'N/A'}
                                     </p>
                                     <p className="text-sm text-muted-foreground">
-                                      {employee.email}
+                                      {employee.designation || 'N/A'}
                                     </p>
                                   </div>
-                                </div>
-                              </td>
-                              <td className="p-4">
-                                <div>
-                                  <p className="font-medium">
-                                    {employee.department}
-                                  </p>
-                                  <p className="text-sm text-muted-foreground">
-                                    {employee.designation}
-                                  </p>
-                                </div>
-                              </td>
-                              <td className="p-4 text-muted-foreground">
-                                {employee.location}
-                              </td>
-                              <td className="p-4">
-                                <Badge
-                                  variant={
-                                    statusColors[
-                                      employee.status as keyof typeof statusColors
-                                    ]
-                                  }
-                                >
-                                  {employee.status === 'on-leave'
-                                    ? 'On Leave'
-                                    : employee.status === 'inactive'
-                                    ? 'Inactive'
-                                    : 'Active'}
-                                </Badge>
-                              </td>
-                              <td className="p-4">
-                                <div className="flex gap-2">
-                                  <Button variant="ghost" size="icon">
-                                    <Eye className="h-4 w-4" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon">
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon">
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </td>
-                            </motion.tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                                </td>
+                                <td className="p-4 text-muted-foreground">
+                                  {employee.phone || 'N/A'}
+                                </td>
+                                <td className="p-4">
+                                  {employee.status && (
+                                    <Badge
+                                      variant={
+                                        statusColors[
+                                          employee.status as keyof typeof statusColors
+                                        ] || 'success'
+                                      }
+                                    >
+                                      {employee.status === 'on-leave'
+                                        ? 'On Leave'
+                                        : employee.status === 'inactive'
+                                        ? 'Inactive'
+                                        : 'Active'}
+                                    </Badge>
+                                  )}
+                                </td>
+                                <td className="p-4">
+                                  <div className="flex gap-2">
+                                    <Button variant="ghost" size="icon">
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon">
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon">
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </td>
+                              </motion.tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
-              </motion.div>
-            )}
-
-            {filteredEmployees.length === 0 && (
-              <motion.div
-                key="empty"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-center py-12"
-              >
-                <p className="text-muted-foreground">
-                  No employees found matching your criteria
-                </p>
               </motion.div>
             )}
           </AnimatePresence>
         </Tabs>
       </div>
 
-      {/* MODALS (placeholders – you can plug in real forms) */}
+      {/* MODALS */}
 
       {/* Add Employee Modal */}
       <Dialog
@@ -572,24 +706,24 @@ const Employees: React.FC = () => {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="name">Full Name</Label>
+              <Label htmlFor="name">Full Name *</Label>
               <Input
                 id="name"
-                value={newEmployee.name}
+                value={empForm.name}
                 onChange={(e) =>
-                  setNewEmployee({ ...newEmployee, name: e.target.value })
+                  setEmpForm({ ...empForm, name: e.target.value })
                 }
                 placeholder="John Doe"
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Email *</Label>
               <Input
                 id="email"
                 type="email"
-                value={newEmployee.email}
+                value={empForm.email}
                 onChange={(e) =>
-                  setNewEmployee({ ...newEmployee, email: e.target.value })
+                  setEmpForm({ ...empForm, email: e.target.value })
                 }
                 placeholder="john@company.com"
               />
@@ -598,49 +732,50 @@ const Employees: React.FC = () => {
               <Label htmlFor="phone">Phone</Label>
               <Input
                 id="phone"
-                value={newEmployee.phone}
+                value={empForm.phone}
                 onChange={(e) =>
-                  setNewEmployee({ ...newEmployee, phone: e.target.value })
+                  setEmpForm({ ...empForm, phone: e.target.value })
                 }
                 placeholder="+1 234 567 890"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="department">Department</Label>
+                <Label htmlFor="department">Department *</Label>
                 <Select
-                  value={newEmployee.department}
+                  value={empForm.department}
                   onValueChange={(value) =>
-                    setNewEmployee({ ...newEmployee, department: value })
+                    setEmpForm({ ...empForm, department: value })
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select" />
+                    <SelectValue placeholder="Select department" />
                   </SelectTrigger>
                   <SelectContent>
-                    {departments
-                      .filter((d) => d !== 'all')
-                      .map((dept) => (
-                        <SelectItem key={dept} value={dept}>
-                          {dept}
-                        </SelectItem>
-                      ))}
+                    {departments.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.id}>
+                        {dept.name} ({dept.code})
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="designation">Designation</Label>
-                <Input
-                  id="designation"
-                  value={newEmployee.designation}
-                  onChange={(e) =>
-                    setNewEmployee({
-                      ...newEmployee,
-                      designation: e.target.value,
-                    })
+                <Label htmlFor="role">Role *</Label>
+                <Select
+                  value={empForm.role}
+                  onValueChange={(value) =>
+                    setEmpForm({ ...empForm, role: value })
                   }
-                  placeholder="Role"
-                />
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="employee">Employee</SelectItem>
+                    <SelectItem value="team_lead">Team Lead</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
@@ -651,8 +786,12 @@ const Employees: React.FC = () => {
             >
               Cancel
             </Button>
-            <Button variant="gradient" onClick={handleAddEmployee}>
-              Add Employee
+            <Button
+              variant="gradient"
+              onClick={handleAddEmployeeWithDept}
+              disabled={loading}
+            >
+              {loading ? 'Creating...' : 'Add Employee'}
             </Button>
           </div>
         </DialogContent>
@@ -690,18 +829,92 @@ const Employees: React.FC = () => {
           <DialogHeader>
             <DialogTitle>Add Department</DialogTitle>
           </DialogHeader>
-          <div className="py-4 text-sm text-muted-foreground">
-            Add your department creation form here.
+
+          {error && (
+            <div className="bg-red-50 text-red-700 p-3 rounded text-sm border border-red-200">
+              <strong>Error:</strong> {error}
+            </div>
+          )}
+
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="dept-name">
+                Name <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="dept-name"
+                value={deptForm.name}
+                onChange={(e) =>
+                  setDeptForm({ ...deptForm, name: e.target.value })
+                }
+                placeholder="e.g., Engineering"
+                maxLength={255}
+                onKeyPress={
+                  (e) => e.key === 'Enter' && handleAddDepartment()
+                }
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="dept-code">
+                Code <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="dept-code"
+                maxLength={4}
+                value={deptForm.code}
+                onChange={(e) =>
+                  setDeptForm({
+                    ...deptForm,
+                    code: e.target.value
+                      .toUpperCase()
+                      .replace(/[^A-Z0-9]/g, ''),
+                  })
+                }
+                placeholder="e.g., ENG"
+                className="uppercase font-mono"
+                onKeyPress={
+                  (e) => e.key === 'Enter' && handleAddDepartment()
+                }
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="dept-desc">
+                Description <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="dept-desc"
+                value={deptForm.description}
+                onChange={(e) =>
+                  setDeptForm({ ...deptForm, description: e.target.value })
+                }
+                placeholder="Department description"
+                maxLength={500}
+                onKeyPress={
+                  (e) => e.key === 'Enter' && handleAddDepartment()
+                }
+              />
+            </div>
           </div>
+
           <div className="flex justify-end gap-3">
             <Button
               variant="outline"
-              onClick={() => setIsAddDepartmentModalOpen(false)}
+              onClick={() => {
+                setIsAddDepartmentModalOpen(false);
+                setError('');
+              }}
+              disabled={loading}
             >
-              Close
+              Cancel
             </Button>
-            <Button onClick={() => setIsAddDepartmentModalOpen(false)}>
-              Save (placeholder)
+            <Button
+              variant="gradient"
+              onClick={handleAddDepartment}
+              disabled={loading}
+            >
+              {loading ? 'Creating...' : 'Add Department'}
             </Button>
           </div>
         </DialogContent>

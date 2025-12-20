@@ -4,8 +4,17 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from .models import User
-from companies.models import Department
 import logging
+from django.db import transaction
+from django.contrib.auth.models import User as DjangoUser
+from companies.models import Department, CompanyAdmin
+from .serializers import (
+    AddDepartmentSerializer,
+    AddEmployeeSerializer,
+    DepartmentSerializer,
+)
+import secrets
+import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +35,65 @@ class UserViewSet(viewsets.ViewSet):
     # ============================================
     # COMPLETE PROFILE ENDPOINT
     # ============================================
+
+
+    @action(detail=False, methods=['get'], url_path='get_user_details', permission_classes=[IsAuthenticated])
+    def get_user_details(self, request):
+        """Get current user details with department name"""
+        try:
+            # Get Django user
+            django_user = request.user
+
+            if not django_user or not django_user.is_authenticated:
+                return Response(
+                    {'success': False, 'error': 'User not authenticated'},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+
+            # Get custom user from users table
+            try:
+                custom_user = User.objects.get(email=django_user.email)
+            except User.DoesNotExist:
+                return Response(
+                    {'success': False, 'error': 'User profile not found'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Get department name from department_id
+            dept_name = 'Unassigned'
+            if custom_user.department_id:
+                try:
+                    dept = Department.objects.get(id=custom_user.department_id)
+                    dept_name = dept.name
+                except Department.DoesNotExist:
+                    dept_name = 'Unknown'
+
+            # Build response
+            user_data = {
+                'id': str(custom_user.id),
+                'email': custom_user.email,
+                'full_name': getattr(custom_user, 'name', ''),
+                'phone': getattr(custom_user, 'phone', ''),
+                'role': getattr(custom_user, 'role', ''),
+                'company_id': str(custom_user.company_id) if custom_user.company_id else None,
+                'department_id': str(custom_user.department_id) if custom_user.department_id else None,
+                'department': dept_name,  # ✅ Department NAME, not ID
+                'designation': getattr(custom_user, 'designation', ''),
+                'profile_completed': getattr(custom_user, 'profile_completed', False),
+                'temp_password': getattr(custom_user, 'temp_password', False),
+            }
+
+            return Response(
+                {'success': True, 'data': user_data},
+                status=status.HTTP_200_OK
+            )
+
+        except Exception as e:
+            return Response(
+                {'success': False, 'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 
     @action(detail=False, methods=['post'], url_path='complete_profile')
     def complete_profile(self, request):
@@ -224,3 +292,233 @@ class UserViewSet(viewsets.ViewSet):
                 'success': False,
                 'error': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    # ============================================
+    # DEPARTMENT AND EMPLOYEE MANAGEMENT ENDPOINTS
+    # ============================================
+
+    @action(detail=False, methods=['post'], url_path='add_department')
+    def add_department(self, request):
+        """Create new department"""
+        try:
+            try:
+                company_admin = CompanyAdmin.objects.get(user=request.user)
+                company = company_admin.company
+                
+            except CompanyAdmin.DoesNotExist:
+                return Response({'success': False, 'error': 'Company admin not found'}, 
+                              status=status.HTTP_404_NOT_FOUND)
+            
+            serializer = AddDepartmentSerializer(data=request.data)
+            if not serializer.is_valid():
+                return Response({'success': False, 'errors': serializer.errors}, 
+                              status=status.HTTP_400_BAD_REQUEST)
+            
+            validated_data = serializer.validated_data
+
+            # ✅ Step 3: Check for duplicate code in this company
+            if Department.objects.filter(
+                company_id=company.id, 
+                code=validated_data['code'].upper()  # Case-insensitive check
+            ).exists():
+                return Response(
+                    {'success': False, 'error': f"Code '{validated_data['code']}' already exists in this company"},
+                    status=status.HTTP_400_BAD_REQUEST)
+            
+            # Check for duplicate code
+            if Department.objects.filter(company_id=company.id, code=validated_data['code']).exists():
+                return Response({'success': False, 'error': f"Code {validated_data['code']} already exists"},
+                              status=status.HTTP_400_BAD_REQUEST)
+            
+            # Create department
+            department = Department.objects.create(
+                id=uuid.uuid4(),
+                company_id=company.id,
+                name=validated_data['name'],
+                code=validated_data['code'],
+                description=validated_data['description'],
+                created_at=timezone.now()
+            )
+            
+            dept_serializer = DepartmentSerializer(department)
+            return Response({'success': True, 'data': dept_serializer.data}, 
+                          status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'success': False, 'error': str(e)}, 
+                          status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['get'], url_path='list_departments')
+    def list_departments(self, request):
+        """List all departments for company"""
+        try:
+            try:
+                company_admin = CompanyAdmin.objects.get(user=request.user)
+                company = company_admin.company
+            except CompanyAdmin.DoesNotExist:
+                return Response({'success': False, 'error': 'Company admin not found'},
+                              status=status.HTTP_404_NOT_FOUND)
+            
+            departments = Department.objects.filter(company_id=company.id).order_by('name')
+            serializer = DepartmentSerializer(departments, many=True)
+            
+            return Response({'success': True, 'data': serializer.data, 'count': departments.count()},
+                          status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'success': False, 'error': str(e)},
+                          status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['post'], url_path='add_employee')
+    def add_employee(self, request):
+        """Create new employee"""
+        try:
+            try:
+                company_admin = CompanyAdmin.objects.get(user=request.user)
+                company = company_admin.company
+            except CompanyAdmin.DoesNotExist:
+                return Response({'success': False, 'error': 'Company admin not found'},
+                              status=status.HTTP_404_NOT_FOUND)
+            
+            serializer = AddEmployeeSerializer(data=request.data)
+            if not serializer.is_valid():
+                return Response({'success': False, 'errors': serializer.errors},
+                              status=status.HTTP_400_BAD_REQUEST)
+            
+            validated_data = serializer.validated_data
+            
+            # Validate department
+            try:
+                department = Department.objects.get(
+                    id=validated_data['department_id'],
+                    company_id=company.id
+                )
+            except Department.DoesNotExist:
+                return Response({'success': False, 'error': 'Department not found'},
+                              status=status.HTTP_400_BAD_REQUEST)
+            
+            # Generate credentials
+            temp_password = secrets.token_urlsafe(12)
+            employee_id = str(uuid.uuid4())
+            
+            try:
+                with transaction.atomic():
+                    # Create Django auth_user
+                    django_user = DjangoUser.objects.create_user(
+                        username=validated_data['email'],
+                        email=validated_data['email'],
+                        first_name=validated_data['name'].split(),
+                        password=temp_password
+                    )
+                    
+                    # Create users app User
+                    user_record = User.objects.create(
+                        id=employee_id,
+                        email=validated_data['email'],
+                        name=validated_data['name'],
+                        role=validated_data['role'],
+                        company_id=company.id,
+                        department_id=validated_data['department_id'],
+                        temp_password=True,
+                        profile_completed=False,
+                        password_hash=django_user.password,
+                        created_at=timezone.now()
+                    )
+                    
+                    # If team_lead, assign as head
+                    if validated_data['role'] == 'team_lead':
+                        department.head_id = django_user.id
+                        department.save()
+                    
+                    # Send email
+                    try:
+                        from django.core.mail import send_mail
+                        send_mail(
+                            "WorkOS - Your Employee Account Created",
+                            f"Hello {validated_data['name']},\n\nEmail: {validated_data['email']}\nTemp Password: {temp_password}\n\nPlease login and change your password.",
+                            'noreply@workos.com',
+                            [validated_data['email']],
+                            fail_silently=False,
+                        )
+                    except:
+                        pass
+                    
+                    response_data = {
+                        'id': str(user_record.id),
+                        'name': user_record.name,
+                        'email': user_record.email,
+                        'role': user_record.role,
+                        'department_id': str(user_record.department_id),
+                        'department_name': department.name,
+                        'company_id': str(user_record.company_id),
+                    }
+                    
+                    return Response({
+                        'success': True,
+                        'message': f'Employee "{user_record.name}" created successfully',
+                        'data': response_data
+                    }, status=status.HTTP_201_CREATED)
+            except Exception as e:
+                return Response({'success': False, 'error': str(e)},
+                              status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({'success': False, 'error': str(e)},
+                          status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    @action(detail=False, methods=['get'], url_path='list_employees', permission_classes=[IsAuthenticated])
+    def list_employees(self, request):
+        """List all employees for the current company"""
+        try:
+            # Get company from logged-in admin
+            try:
+                company_admin = CompanyAdmin.objects.get(user=request.user)
+                company = company_admin.company
+            except CompanyAdmin.DoesNotExist:
+                return Response(
+                    {'success': False, 'error': 'Company admin not found'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Get all users (employees) for this company - NO select_related needed
+            employees = User.objects.filter(
+                company_id=company.id
+            ).order_by('-created_at')
+
+            # Build response data MANUALLY
+            employee_list = []
+            for emp in employees:
+                # Get department name from department_id
+                dept_name = 'N/A'
+                if emp.department_id:
+                    try:
+                        dept = Department.objects.get(id=emp.department_id)
+                        dept_name = dept.name
+                    except Department.DoesNotExist:
+                        dept_name = 'Unknown'
+                
+                employee_data = {
+                    'id': str(emp.id),
+                    'name': emp.name,
+                    'email': emp.email,
+                    'role': emp.role,
+                    'department': dept_name,
+                    'department_id': str(emp.department_id) if emp.department_id else None,
+                    'status': 'active' if not emp.temp_password else 'pending',
+                    'phone': getattr(emp, 'phone', None),
+                    'designation': getattr(emp, 'designation', None),
+                    'location': getattr(emp, 'location', None),
+                    'join_date': emp.created_at.strftime('%Y-%m-%d') if emp.created_at else None,
+                }
+                employee_list.append(employee_data)
+
+            return Response(
+                {
+                    'success': True,
+                    'data': employee_list,
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except Exception as e:
+            return Response(
+                {'success': False, 'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

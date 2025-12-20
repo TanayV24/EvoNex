@@ -1,5 +1,3 @@
-// src/contexts/AuthContext.tsx - UPDATED VERSION
-
 import React, {
   createContext,
   useContext,
@@ -10,7 +8,7 @@ import React, {
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-type UserRole = 'company_admin' | 'hr_manager' | 'manager' | 'team_lead' | 'employee' | 'hr'; // ✅ ADDED 'hr'
+type UserRole = 'company_admin' | 'hr_manager' | 'manager' | 'team_lead' | 'employee' | 'hr';
 
 export interface User {
   id: string;
@@ -26,7 +24,7 @@ export interface User {
   full_name?: string;
   personal_email?: string;
   temp_password?: boolean;
-  company_setup_completed?: boolean;  // ✅ ADD THIS
+  company_setup_completed?: boolean;
   profile_completed?: boolean;
   verified?: boolean;
 }
@@ -57,17 +55,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [refreshToken, setRefreshToken] = useState<string | null>(
     localStorage.getItem('refresh_token')
   );
-  const [loading, setLoading] = useState(true); // Start as loading
+  const [loading, setLoading] = useState(true);
 
   // On mount, check if user is already logged in
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     const storedAccessToken = localStorage.getItem('access_token');
-    
+
     console.log('🔍 AuthContext: Checking stored credentials...');
     console.log('Stored user:', storedUser);
     console.log('Stored token:', storedAccessToken ? 'EXISTS' : 'NONE');
-    
+
     if (storedUser && storedAccessToken) {
       try {
         const userData = JSON.parse(storedUser);
@@ -84,7 +82,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } else {
       console.log('ℹ️ No stored credentials found');
     }
-    
+
     setLoading(false);
   }, []);
 
@@ -124,20 +122,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.removeItem('refresh_token');
   }, []);
 
-  const switchRole = useCallback((role: UserRole) => {
-    if (user) {
-      setUser({ ...user, role });
-    }
-  }, [user]);
+  const switchRole = useCallback(
+    (role: UserRole) => {
+      if (user) {
+        setUser({ ...user, role });
+      }
+    },
+    [user]
+  );
 
-  const updateUserData = useCallback((userData: Partial<User>) => {
-    if (user) {
-      const updatedUser = { ...user, ...userData };
-      setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      console.log('✅ User data updated:', updatedUser);
-    }
-  }, [user]);
+  const updateUserData = useCallback(
+    (userData: Partial<User>) => {
+      if (user) {
+        const updatedUser = { ...user, ...userData };
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        console.log('✅ User data updated:', updatedUser);
+      }
+    },
+    [user]
+  );
 
   const value: AuthContextType = {
     user,
@@ -151,7 +155,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loading,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => {
