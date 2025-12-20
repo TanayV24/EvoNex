@@ -1,4 +1,4 @@
---- Trial company--
+--- Demo2 company--
 
 Comapny Name - Demo2
 webstie-demo2.com
@@ -7,3 +7,17 @@ admin@demo2.com-demo2123           // company admin
 zeelp1696@gmail.com - zeel123456	//HR
 tanayvakharia.13356@gmail.com - tanay123456	//Manager
 200103042151@silveroakuni.ac.in - pre123456
+
+
+
+
+
+
+
+
+
+
+-------------------------------------
+    Test ompany
+-------------------------------------
+    admin@test.com-test1234         //Comapny admin
