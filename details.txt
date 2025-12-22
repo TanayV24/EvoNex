@@ -1,0 +1,22 @@
+// visibleBasicItems logic:
+- EMPLOYEE: Dashboard only
+- TEAM LEAD: Dashboard + Analytics
+- MANAGER/HR/ADMIN: Dashboard + Analytics + Employees
+
+// flattenedIndividualItems logic:
+- EMPLOYEE & TEAM LEAD: Work Mgmt (Tasks, Attendance, Leave) + Collaboration (Chat, Whiteboard)
+  → All as INDIVIDUAL items (NO grouping structure)
+
+// visibleGroups logic:
+- MANAGER: Work Management + Collaboration (GROUPED with collapsible headers)
+- HR: Collaboration + Finance (GROUPED with collapsible headers) - NO Work Management
+- ADMIN: All 4 groups (GROUPED with collapsible headers)
+
+
+| Role      | Dashboard | Analytics | Employees | Work Management | Collaboration | Finance | System | Structure  |
+| --------- | --------- | --------- | --------- | --------------- | ------------- | ------- | ------ | ---------- |
+| Employee  | ✅         | ❌         | ❌         | ✅               | ✅             | ❌       | ❌      | Individual |
+| Team Lead | ✅         | ✅         | ❌         | ✅               | ✅             | ❌       | ❌      | Individual |
+| Manager   | ✅         | ✅         | ✅         | ✅               | ✅             | ❌       | ❌      | Grouped    |
+| HR        | ✅         | ✅         | ✅         | ❌               | ✅             | ✅       | ❌      | Grouped    |
+| Admin     | ✅         | ✅         | ✅         | ✅               | ✅             | ✅       | ✅      | Grouped    |
