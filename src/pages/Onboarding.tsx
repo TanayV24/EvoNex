@@ -138,9 +138,7 @@ const Onboarding: React.FC = () => {
   const [completingSetup, setCompletingSetup] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
-  const [shifts, setShifts] = useState<Shift[]>([
-    { work_type: setupForm.work_type, name: '', startTime: '', endTime: '', description: '' },
-  ])
+  const [shifts, setShifts] = useState<Shift[]>([])  // ✅ START EMPTY
   const [selectedShiftIndex, setSelectedShiftIndex] = useState(0)
 
   // either "duration" or "shifts"
@@ -479,8 +477,8 @@ const Onboarding: React.FC = () => {
     if (websiteUrl && !websiteUrl.startsWith('http://') && !websiteUrl.startsWith('https://')) {
       websiteUrl = `https://${websiteUrl}`
     }
-    console.log('🔍 DEBUG: shifts state =', shifts);  // ADD THIS LINE
 
+    // ✅ BUILD PAYLOAD CLEANLY - NO DUPLICATION
     const payload: any = {
       companyname: setupForm.companyname,
       companywebsite: websiteUrl,
@@ -493,43 +491,31 @@ const Onboarding: React.FC = () => {
       casualleavedays: setupForm.casualleavedays,
       sickleavedays: setupForm.sickleavedays,
       personalleavedays: setupForm.personalleavedays,
-      shift_duration_minutes: setupForm.shift_duration_minutes, // for scenario 2        
-      workinghoursstart: setupForm.workinghoursstart,           // for scenario 1
-      workinghoursend: setupForm.workinghoursend,
-
-      shifts: shifts.map(shift => ({
-        name: shift.name,
-        startTime: shift.startTime,      // ✅ CRITICAL
-        endTime: shift.endTime,          // ✅ CRITICAL
-        requiredHours: shift.requiredHours,
-        description: shift.description,
-        is_default: shift.is_default,
-      })),
     }
 
-    console.log('📤 Payload being sent:', JSON.stringify(payload, null, 2));  // ADD THIS
-    // Add data based on work type AND shift config mode
+    // Add data ONLY based on work type
     if (setupForm.work_type === 'fixed_hours') {
+      // Scenario 1: Standard Office Hours
       payload.workinghoursstart = setupForm.workinghoursstart
       payload.workinghoursend = setupForm.workinghoursend
     } else if (setupForm.work_type === 'shift_based') {
       if (shiftConfigMode === 'duration') {
-        // Scenario 2: Only shift duration
+        // Scenario 2: Flexible hours with duration
         payload.shift_duration_minutes = setupForm.shift_duration_minutes
-      } else if (shiftConfigMode === 'shifts') {
-        // Scenario 3: Detailed shifts array
-        payload.shifts = shifts.map((s) => ({
-          work_type: s.work_type,
-          name: s.name,
-          startTime: s.startTime || null,
-          endTime: s.endTime || null,
-          requiredhoursperday: s.requiredHours ? Number(s.requiredHours) : null,
-          description: s.description || null,
+      } else {
+        // Scenario 3: Detailed shifts
+        payload.shifts = shifts.map((shift) => ({
+          name: shift.name,
+          startTime: shift.startTime,
+          endTime: shift.endTime,
+          requiredHours: shift.requiredHours,
+          description: shift.description,
+          is_default: shift.is_default,
         }))
       }
     }
 
-    console.log('📤 Sending payload:', JSON.stringify(payload, null, 2))
+    console.log('📤 Payload being sent:', JSON.stringify(payload, null, 2))
 
     const response = await authRest.companySetup(payload)
 
@@ -554,8 +540,6 @@ const Onboarding: React.FC = () => {
     setCompletingSetup(false)
   }
 }
-
-
 
   // ==========================================
   // RENDER
@@ -1000,7 +984,10 @@ const Onboarding: React.FC = () => {
                     >
                       <button
                         type="button"
-                        onClick={() => setShiftConfigMode('duration')}
+                        onClick={() => {
+                          setShiftConfigMode('duration')
+                          setShifts([])
+                        }}
                         className="flex items-center gap-2 mb-3 text-xs font-medium text-slate-100"
                       >
                         <span className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-current">
@@ -1048,7 +1035,19 @@ const Onboarding: React.FC = () => {
                     >
                       <button
                         type="button"
-                        onClick={() => setShiftConfigMode('shifts')}
+                        onClick={() => {
+                          setShiftConfigMode('shifts')
+                          if (shifts.length === 0) {  // Only add if empty
+                            setShifts([{
+                              work_type: setupForm.work_type,
+                              name: '',
+                              startTime: '',
+                              endTime: '',
+                              description: '',
+                              is_default: true,
+                            }])
+                          }
+                        }}
                         className="flex items-center gap-2 mb-3 text-xs font-medium text-slate-100"
                       >
                         <span className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-current">

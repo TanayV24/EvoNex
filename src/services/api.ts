@@ -119,35 +119,49 @@ export const authRest = {
     currency: payload.currency,
     totalemployees: payload.totalemployees,
     work_type: payload.work_type,
-    breakminutes: payload.break_minutes,
+    break_minutes: payload.break_minutes,
     casualleavedays: payload.casualleavedays,
     sickleavedays: payload.sickleavedays,
     personalleavedays: payload.personalleavedays,
   };
 
-  // SCENARIO 1: Standard Office Hours
   if (payload.work_type === 'fixed_hours') {
   console.log('📋 Scenario 1: Standard Office Hours');
-  backendPayload.workinghoursstart = payload.workinghoursstart;
-  backendPayload.workinghoursend = payload.workinghoursend;
+  backendPayload = {
+    ...backendPayload,  // ✅ Spread existing fields
+    workinghoursstart: payload.workinghoursstart,
+    workinghoursend: payload.workinghoursend,
+    };
   }
   // SCENARIO 2 & 3: Shift-Based
-  else if (payload.work_type === 'shift_based') {
-  if (payload.shifts && payload.shifts.length > 0) {
+else if (payload.work_type === 'shift_based') {
+  // Check if shifts have actual data (name + times) - Scenario 3
+  const hasDetailedShifts = payload.shifts && 
+    payload.shifts.length > 0 && 
+    payload.shifts.some((shift: any) => shift.name && shift.startTime && shift.endTime);  // ✅ FIX
+
+  if (hasDetailedShifts) {
     console.log('📋 Scenario 3: Detailed Schedule Shifts');
-    backendPayload.shifts = payload.shifts.map((shift: any) => ({
-      name: shift.name,
-      startTime: shift.startTime,
-      endTime: shift.endTime,
-      requiredHours: shift.requiredHours,
-      description: shift.description,
-      is_default: shift.is_default || false,
-    }));
+    backendPayload = {
+      ...backendPayload,
+      shifts: payload.shifts.map((shift: any) => ({
+        name: shift.name,
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+        requiredHours: shift.requiredHours,
+        description: shift.description,
+        is_default: shift.is_default || false,
+      })),
+    };
   } else {
+    // Scenario 2: Only shift duration
     console.log('📋 Scenario 2: Shift-Based Flexible Hours');
-    backendPayload.shiftdurationminutes = payload.shift_duration_minutes;
+    backendPayload = {
+      ...backendPayload,
+      shift_duration_minutes: payload.shift_duration_minutes,
+    };
   }
-  }
+}
 
   console.log('📤 Sending to backend:', backendPayload);
 

@@ -486,7 +486,7 @@ class AuthViewSet(viewsets.ViewSet):
                 details.end_time = None
                 
                 # Check if it's flexible hours OR detailed schedule
-                shift_duration = data.get('shiftdurationminutes')  # For Scenario 2
+                shift_duration = data.get('shift_duration_minutes')  # For Scenario 2
                 shifts_data = data.get('shifts', [])  # For Scenario 3
                 
                 # SCENARIO 2: Flexible Hours (just overall duration)
